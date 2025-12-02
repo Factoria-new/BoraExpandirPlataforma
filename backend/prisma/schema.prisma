@@ -1,0 +1,45 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+// 1. Enumeração para tipos de usuário
+enum TipoUsuario {
+  CLIENTE
+  FINANCEIRO
+  JURIDICO
+  SUPER_ADMIN
+}
+
+model Usuario {
+  // ID vem do Supabase Auth (UUID). Não geramos default aqui.
+  id             String      @id @db.Uuid
+  email          String      @unique
+  nome           String?
+  tipo           TipoUsuario @default(CLIENTE)
+  bucketRootPath String?     @map("bucket_root_path")
+
+  notificacoes   Notificacao[]
+
+  criadoEm       DateTime    @default(now()) @map("criado_em")
+  atualizadoEm   DateTime    @updatedAt @map("atualizado_em")
+
+  @@map("usuarios")
+}
+
+model Notificacao {
+  id        String   @id @default(uuid()) // Gerado pelo Prisma
+  mensagem  String
+  lida      Boolean  @default(false)
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  usuarioId String   @db.Uuid @map("usuario_id")
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("notificacoes")
+}

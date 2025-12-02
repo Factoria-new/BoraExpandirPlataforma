@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-w: 260px;
+  --background: 255 255 255;
+  --foreground: 17 24 39;
+  --card: 255 255 255;
+  --card-foreground: 17 24 39;
+  --muted: 243 244 246;
+  --muted-foreground: 107 114 128;
+  --primary: 37 99 235;
+  --primary-foreground: 255 255 255;
+  --ring: 59 130 246;
+  --destructive: 239 68 68;
+  --destructive-foreground: 255 255 255;
+  --success: 34 197 94;
+  --success-foreground: 255 255 255;
+  --warning: 234 179 8;
+  --warning-foreground: 17 24 39;
+  --border: 229 231 235;
+  --input: 229 231 235;
+  --popover: 255 255 255;
+  /* Info base (blue) */
+  --info: 59 130 246;
+  --info-foreground: 255 255 255;
+  /* KPI palette */
+  --kpi-blue: 37 99 235;
+  --kpi-blue-bg: 219 234 254;
+  --kpi-yellow: 202 138 4;
+  --kpi-yellow-bg: 254 249 195;
+  --kpi-red: 220 38 38;
+  --kpi-red-bg: 254 226 226;
+
+  /* Admin surface tokens */
+  --admin-surface: 248 250 252; /* slate-50 */
+  --admin-content: 249 250 251; /* neutral-50 */
+
+  /* Sidebar tokens */
+  --sidebar-background: 255 255 255;
+  --sidebar-foreground: 31 41 55;
+  --sidebar-border: 229 231 235;
+  --sidebar-accent: 243 244 246;
+  --sidebar-primary: 37 99 235;
+
+  /* Status tokens (aliases) */
+  --status-success: var(--success);
+  --status-warning: var(--warning);
+  --status-error: var(--destructive);
+  --status-info: var(--info);
+
+  /* Role tokens */
+  --role-sales: 37 99 235;     /* blue */
+  --role-legal: 34 197 94;     /* green */
+  --role-finance: 234 179 8;   /* amber */
+}
+
+/* Dark theme overrides */
+.dark {
+  --background: 17 24 39;           /* slate-900 */
+  --foreground: 255 255 255;        /* pure white for dark titles/text */
+  --card: 15 23 42;                 /* slate-900/950 */
+  --card-foreground: 226 232 240;
+  --muted: 30 41 59;                /* slate-800 */
+  --muted-foreground: 148 163 184;  /* slate-400 */
+  --border: 51 65 85;               /* slate-700 */
+  --input: 51 65 85;
+  --popover: 30 41 59;              /* slate-800 */
+  --admin-surface: 15 23 42;
+  --admin-content: 2 6 23;
+  --sidebar-background: 15 23 42;
+  --sidebar-foreground: 203 213 225; /* slate-300 */
+  --sidebar-border: 51 65 85;
+  --sidebar-accent: 30 41 59;
+}
+
+/* Minimal shadcn-like utility shims */
+.bg-background { background-color: rgb(var(--background)); }
+.text-foreground { color: rgb(var(--foreground)); }
+.bg-card { background-color: rgb(var(--card)); }
+.text-card-foreground { color: rgb(var(--card-foreground)); }
+.bg-muted { background-color: rgb(var(--muted)); }
+.text-muted-foreground { color: rgb(var(--muted-foreground)); }
+.bg-primary { background-color: rgb(var(--primary)); }
+.text-primary-foreground { color: rgb(var(--primary-foreground)); }
+.text-destructive { color: rgb(var(--destructive)); }
+.bg-destructive { background-color: rgb(var(--destructive)); }
+.text-destructive-foreground { color: rgb(var(--destructive-foreground)); }
+.bg-success { background-color: rgb(var(--success)); }
+.text-success { color: rgb(var(--success)); }
+.text-warning { color: rgb(var(--warning)); }
+.bg-warning { background-color: rgb(var(--warning)); }
+.ring-ring { --tw-ring-color: rgb(var(--ring)); }
+.bg-popover { background-color: rgb(var(--popover)); }
+.text-popover-foreground { color: rgb(var(--foreground)); }
+
+/* Admin helper surfaces */
+.bg-admin-surface { background-color: rgb(var(--admin-surface)); }
+.bg-admin-content { background-color: rgb(var(--admin-content)); }
+
+/* Sidebar helpers */
+.bg-sidebar { background-color: rgb(var(--sidebar-background)); }
+.text-sidebar-foreground { color: rgb(var(--sidebar-foreground)); }
+.border-sidebar-border { border-color: rgb(var(--sidebar-border)); }
+.bg-sidebar-accent { background-color: rgb(var(--sidebar-accent)); }
+.text-sidebar-primary { color: rgb(var(--sidebar-primary)); }
+
+/* KPI helper utility classes used by dashboard */
+.border-kpi-blue { border-color: rgb(var(--kpi-blue)); }
+.text-kpi-blue { color: rgb(var(--kpi-blue)); }
+.bg-kpi-blue-bg { background-color: rgb(var(--kpi-blue-bg)); }
+
+.border-kpi-yellow { border-color: rgb(var(--kpi-yellow)); }
+.text-kpi-yellow { color: rgb(var(--kpi-yellow)); }
+.bg-kpi-yellow-bg { background-color: rgb(var(--kpi-yellow-bg)); }
+
+.border-kpi-red { border-color: rgb(var(--kpi-red)); }
+.text-kpi-red { color: rgb(var(--kpi-red)); }
+.bg-kpi-red-bg { background-color: rgb(var(--kpi-red-bg)); }
+
+/* Status semantic helpers (map to tokens) */
+.text-status-success { color: rgb(var(--status-success)); }
+.bg-status-success { background-color: rgb(var(--status-success)); }
+.border-status-success { border-color: rgb(var(--status-success)); }
+
+.text-status-warning { color: rgb(var(--status-warning)); }
+.bg-status-warning { background-color: rgb(var(--status-warning)); }
+.border-status-warning { border-color: rgb(var(--status-warning)); }
+
+.text-status-error { color: rgb(var(--status-error)); }
+.bg-status-error { background-color: rgb(var(--status-error)); }
+.border-status-error { border-color: rgb(var(--status-error)); }
+
+.text-status-info { color: rgb(var(--status-info)); }
+.bg-status-info { background-color: rgb(var(--status-info)); }
+.border-status-info { border-color: rgb(var(--status-info)); }
+
+/* Role helpers */
+.text-role-sales { color: rgb(var(--role-sales)); }
+.bg-role-sales { background-color: rgb(var(--role-sales)); }
+.border-role-sales { border-color: rgb(var(--role-sales)); }
+
+.text-role-legal { color: rgb(var(--role-legal)); }
+.bg-role-legal { background-color: rgb(var(--role-legal)); }
+.border-role-legal { border-color: rgb(var(--role-legal)); }
+
+.text-role-finance { color: rgb(var(--role-finance)); }
+.bg-role-finance { background-color: rgb(var(--role-finance)); }
+.border-role-finance { border-color: rgb(var(--role-finance)); }
+
+/* Base typography & focus ring normalizations */
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; }
+}
+
+@layer utilities {
+  .focus-ring { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+  .scroll-smooth { scroll-behavior: smooth; }
+}
+
+/* Dark mode text normalization for legacy classes */
+.dark .text-black,
+.dark .text-gray-900,
+.dark .text-neutral-900,
+.dark .text-slate-900,
+.dark .text-zinc-900 { color: rgb(var(--foreground)) !important; }
+
+.dark .text-gray-800,
+.dark .text-neutral-800,
+.dark .text-slate-800,
+.dark .text-zinc-800 { color: rgb(var(--foreground)) !important; }
