@@ -44,6 +44,7 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 			// Redirecionar para WhatsApp
 			const digits = whats.replace(/\D/g, "");
 			const msg = encodeURIComponent(`Olá, sou ${nome}, vim indicado por ${partnerName}.`);
+			//verificar dispositivo e redirecionar par o app ou web
 			const waUrl = `https://wa.me/552997892095?text=${msg}`;
 			window.location.href = waUrl;
 		} finally {

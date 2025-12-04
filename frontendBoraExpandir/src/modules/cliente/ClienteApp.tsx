@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { Sidebar } from './components/Sidebar'
+import { useState, useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { Sidebar } from '../../components/ui/Sidebar'
+import type { SidebarGroup } from '../../components/ui/Sidebar'
 import { Dashboard } from './components/Dashboard'
 import { DocumentUpload } from './components/DocumentUpload'
 import { DocumentStatus } from './components/DocumentStatus'
@@ -14,9 +16,10 @@ import {
   mockRequiredDocuments 
 } from './lib/mock-data'
 import { Document, Notification } from './types'
+import { Home, FileText, Upload, GitBranch, Bell } from 'lucide-react'
 
 export function ClienteApp() {
-  const [currentPage, setCurrentPage] = useState('dashboard')
+  const location = useLocation()
   const [documents, setDocuments] = useState<Document[]>(mockDocuments)
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
@@ -90,7 +93,7 @@ export function ClienteApp() {
 
   const handleUploadFromStatus = (documentType: string) => {
     // Navigate to upload page for specific document type
-    setCurrentPage('upload')
+    window.location.href = '/cliente/upload'
     // Scroll to the specific document section
     setTimeout(() => {
       const element = document.getElementById(`upload-${documentType}`)
@@ -100,62 +103,35 @@ export function ClienteApp() {
     }, 100)
   }
 
-  const handleNavigate = (page: string) => {
-    setCurrentPage(page)
-    
-    // Auto-mark all notifications as read when entering notifications page
-    if (page === 'notifications') {
+  // Auto-mark all notifications as read when entering notifications page
+  useEffect(() => {
+    if (location.pathname === '/cliente/notificacoes') {
       handleMarkAllAsRead()
     }
-  }
+  }, [location.pathname])
 
-  const handleLogout = () => {
-    // Simulate logout
-    alert('Logout realizado com sucesso!')
-  }
-
-  const renderContent = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return (
-          <Dashboard
-            client={mockClient}
-            documents={documents}
-            process={mockProcess}
-          />
-        )
-      case 'process':
-        return <ProcessTimeline process={mockProcess} />
-      case 'documents':
-        return (
-          <DocumentStatus 
-            documents={documents} 
-            onUpload={handleUploadFromStatus}
-            onView={handleViewDocument}
-          />
-        )
-      case 'upload':
-        return (
-          <DocumentUpload
-            documents={documents}
-            requiredDocuments={mockRequiredDocuments}
-            onUpload={handleUpload}
-            onDelete={handleDeleteDocument}
-          />
-        )
-      case 'notifications':
-        return (
-          <Notifications
-            notifications={notifications}
-            onMarkAsRead={handleMarkAsRead}
-            onMarkAllAsRead={handleMarkAllAsRead}
-            onDismiss={handleDismissNotification}
-          />
-        )
-      default:
-        return <Dashboard client={mockClient} documents={documents} process={mockProcess} />
-    }
-  }
+  // Configuração da sidebar seguindo o padrão do projeto
+  const sidebarGroups: SidebarGroup[] = [
+    {
+      label: 'Menu Principal',
+      items: [
+        { label: 'Dashboard', to: '/cliente', icon: Home },
+        { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
+        { label: 'Status Documentos', to: '/cliente/documentos', icon: FileText },
+        { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
+        { 
+          label: 'Notificações', 
+          to: '/cliente/notificacoes', 
+          icon: Bell,
+          badge: unreadNotifications > 0 ? (
+            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-500 text-white">
+              {unreadNotifications}
+            </span>
+          ) : undefined
+        },
+      ],
+    },
+  ]
 
   // Check if client has access
   if (!mockClient.accessGranted) {
@@ -183,19 +159,58 @@ export function ClienteApp() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar
-        client={mockClient}
-        unreadNotifications={unreadNotifications}
-        currentPage={currentPage}
-        onNavigate={handleNavigate}
-        onLogout={handleLogout}
-      />
+      <Sidebar groups={sidebarGroups} />
       
-      <div className="md:ml-80">
-        <main className="p-4 md:p-8">
-          {renderContent()}
-        </main>
-      </div>
+      <main className="ml-64 p-4 md:p-8">
+        <Routes>
+          <Route 
+            index 
+            element={
+              <Dashboard
+                client={mockClient}
+                documents={documents}
+                process={mockProcess}
+              />
+            } 
+          />
+          <Route 
+            path="processo" 
+            element={<ProcessTimeline process={mockProcess} />} 
+          />
+          <Route 
+            path="documentos" 
+            element={
+              <DocumentStatus 
+                documents={documents} 
+                onUpload={handleUploadFromStatus}
+                onView={handleViewDocument}
+              />
+            } 
+          />
+          <Route 
+            path="upload" 
+            element={
+              <DocumentUpload
+                documents={documents}
+                requiredDocuments={mockRequiredDocuments}
+                onUpload={handleUpload}
+                onDelete={handleDeleteDocument}
+              />
+            } 
+          />
+          <Route 
+            path="notificacoes" 
+            element={
+              <Notifications
+                notifications={notifications}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAllAsRead={handleMarkAllAsRead}
+                onDismiss={handleDismissNotification}
+              />
+            } 
+          />
+        </Routes>
+      </main>
 
       <DocumentModal
         document={selectedDocument}

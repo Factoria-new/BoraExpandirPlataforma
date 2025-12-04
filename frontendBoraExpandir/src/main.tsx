@@ -10,6 +10,7 @@ import  AdmApp  from '@/modules/adm/AdmApp'
 import ParceiroApp from '@/modules/parceiro/ParceiroApp'
 import CadastroParceiro from './modules/parceiro/CadastroParceiro'
 import TelaIndicado from './modules/parceiro/TelaIndicado'
+import Comercial from './modules/comercial/Comercial'
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 
@@ -43,6 +44,7 @@ function Home() {
         <p className="text-neutral-600">Escolha um portal ou acesse via login central.</p>
         <div className="flex gap-3 justify-center">
           <a href="/cliente" className="px-4 py-2 bg-emerald-600 text-white rounded">Cliente</a>
+          <a href="/comercial" className="px-4 py-2 bg-blue-600 text-white rounded">Comercial</a>
           <a href="/financeiro" className="px-4 py-2 bg-amber-600 text-white rounded">Financeiro</a>
           <a href="/juridico" className="px-4 py-2 bg-violet-600 text-white rounded">Jurídico</a>
           <a href="/adm" className="px-4 py-2 bg-rose-600 text-white rounded">Admin</a>
@@ -59,6 +61,7 @@ function AppRouter() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/cliente/*" element={<ClienteApp />} />
+        <Route path="/comercial/*" element={<Comercial />} />
         <Route path="/financeiro/*" element={<FinanceiroApp />} />
         <Route path="/juridico/*" element={<JuridicoApp />} />
         <Route path="/adm/*" element={<AdmApp />} />

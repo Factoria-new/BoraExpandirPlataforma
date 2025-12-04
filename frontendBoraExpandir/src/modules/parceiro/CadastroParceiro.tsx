@@ -81,7 +81,7 @@ export default function CadastroParceiro() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
+    <div className="min-h-screen bg-gray-300 px-4 py-8">
       <div className="mx-auto max-w-xl">
         <div className="mb-6 text-center">
           <img
@@ -118,6 +118,47 @@ export default function CadastroParceiro() {
               placeholder="email@dominio.com"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Senha</label>
+            <input
+              id="senha"
+              name="senha"
+              type="password"
+              placeholder="Sua senha"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              onInput={(e) => {
+                const confirm = document.getElementById("confirmacaoSenha") as HTMLInputElement | null;
+                if (confirm) {
+                  confirm.setCustomValidity(confirm.value && confirm.value !== (e.currentTarget as HTMLInputElement).value ? "As senhas não conferem" : "");
+                }
+              }}
+              required
+              minLength={6}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Confirmar Senha</label>
+            <input
+              id="confirmacaoSenha"
+              name="confirmacaoSenha"
+              type="password"
+              placeholder="Repita a senha"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              onInput={(e) => {
+                const senha = document.getElementById("senha") as HTMLInputElement | null;
+                const value = (e.currentTarget as HTMLInputElement).value;
+                if (senha) {
+                  (e.currentTarget as HTMLInputElement).setCustomValidity(value && value !== senha.value ? "As senhas não conferem" : "");
+                }
+              }}
+              required
+              minLength={6}
+            />
+            <p className="text-xs text-muted-foreground">
+              As senhas devem ser iguais e ter ao menos 6 caracteres.
+            </p>
           </div>
 
           <div className="space-y-2">
