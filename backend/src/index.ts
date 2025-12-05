@@ -9,6 +9,7 @@ import dotenv from 'dotenv'
 import {supabase} from './config/SupabaseClient'
 import parceiro from './routes/parceiro'
 import cliente from './routes/cliente'
+import comercial from './routes/comercial'
 
 dotenv.config()
 
@@ -30,6 +31,7 @@ app.get('/', (_req, res) => {
 app.use('/api', router)
 app.use('/parceiro', parceiro)
 app.use('/cliente', cliente)
+app.use('/comercial', comercial)
 
 
 

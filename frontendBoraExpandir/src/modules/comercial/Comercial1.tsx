@@ -1,5 +1,5 @@
-import React, { useState, useMemo, ReactNode } from 'react'
-import { Calendar, Clock, ShoppingCart, Link2, Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { Calendar, Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 
 interface Cliente {
   id: string
@@ -17,12 +17,12 @@ interface Produto {
 }
 
 interface Agendamento {
-  nomeCliente: ReactNode
   id: string
   data: string
   hora: string
   produto: Produto
   cliente: Cliente
+  duracaoMinutos: number
   linkPagamento?: string
   status: 'agendado' | 'confirmado' | 'pago'
 }
@@ -65,15 +65,28 @@ const mockProdutos: Produto[] = [
   },
 ]
 
-// Horários disponíveis
+// Horários disponíveis para agendamento (configurável pelo super admin)
+// TODO: Mover para configuração do banco de dados gerenciada pelo super admin
 const HORARIOS_DISPONIVEIS = [
+  '08:00',
+  '08:30',
   '09:00',
+  '09:30',
   '10:00',
+  '10:30',
   '11:00',
+  '11:30',
+  '13:00',
+  '13:30',
   '14:00',
+  '14:30',
   '15:00',
+  '15:30',
   '16:00',
+  '16:30',
   '17:00',
+  '17:30',
+  '18:00',
 ]
 
 export default function Comercial1() {
@@ -83,12 +96,15 @@ export default function Comercial1() {
   const [horaSelecionada, setHoraSelecionada] = useState<string>('')
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
+  const [duracaoMinutos, setDuracaoMinutos] = useState<number>(60)
   const [passo, setPasso] = useState<'calendario' | 'horario' | 'produto' | 'cliente' | 'confirmacao'>(
     'calendario'
   )
+  const [agendamentoPreview, setAgendamentoPreview] = useState<Agendamento | null>(null)
   const [searchCliente, setSearchCliente] = useState('')
   const [mostrarListaClientes, setMostrarListaClientes] = useState(false)
-  const [agendamentoPreview, setAgendamentoPreview] = useState<Partial<Agendamento> | null>(null)
+  const [agendamentosDia, setAgendamentosDia] = useState<any[]>([])
+  const [dataSelecionadaIso, setDataSelecionadaIso] = useState<string>('')
 
   // Cálculos de calendário
   const diasNoMes = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1, 0).getDate()
@@ -116,6 +132,8 @@ export default function Comercial1() {
     const novosDias = new Set(diasSelecionados)
     if (novosDias.has(dia)) {
       novosDias.delete(dia)
+      setDataSelecionadaIso('')
+      setAgendamentosDia([])
     } else {
       novosDias.clear()
       novosDias.add(dia)
@@ -123,6 +141,11 @@ export default function Comercial1() {
     setDiasSelecionados(novosDias)
     setHoraSelecionada('')
     if (novosDias.size > 0) {
+      const dataIso = new Date(mesAtual.getFullYear(), mesAtual.getMonth(), dia)
+        .toISOString()
+        .split('T')[0]
+      setDataSelecionadaIso(dataIso)
+      carregarAgendamentosDoDia(dataIso)
       setPasso('horario')
     }
   }
@@ -130,6 +153,15 @@ export default function Comercial1() {
   const handleSelecionarHora = (hora: string) => {
     setHoraSelecionada(hora)
     setPasso('produto')
+  }
+
+  const calcularHoraFim = (horaInicio: string, duracao: number) => {
+    const [h, m] = horaInicio.split(':').map(Number)
+    const inicio = new Date(2000, 0, 1, h, m)
+    const fim = new Date(inicio.getTime() + duracao * 60000)
+    const hh = fim.getHours().toString().padStart(2, '0')
+    const mm = fim.getMinutes().toString().padStart(2, '0')
+    return `${hh}:${mm}`
   }
 
   const handleSelecionarProduto = (produto: Produto) => {
@@ -141,51 +173,124 @@ export default function Comercial1() {
     setClienteSelecionado(cliente)
     setSearchCliente('')
     setMostrarListaClientes(false)
-    setPasso('confirmacao')
-  }
 
-  const handleConfirmarAgendamento = () => {
-    if (!produtoSelecionado || diasSelecionados.size === 0 || !horaSelecionada || !clienteSelecionado)
-      return
+    if (!produtoSelecionado || diasSelecionados.size === 0 || !horaSelecionada) return
 
     const dia = Array.from(diasSelecionados)[0]
     const data = new Date(mesAtual.getFullYear(), mesAtual.getMonth(), dia)
       .toISOString()
       .split('T')[0]
 
-    const novoAgendamento: Agendamento = {
-        id: Date.now().toString(),
-        data,
-        hora: horaSelecionada,
-        produto: produtoSelecionado,
-        cliente: clienteSelecionado,
-        status: 'agendado',
-        nomeCliente: undefined
+    const preview: Agendamento = {
+      id: Date.now().toString(),
+      data,
+      hora: horaSelecionada,
+      produto: produtoSelecionado,
+      cliente,
+      duracaoMinutos,
+      status: 'agendado',
     }
-
-    setAgendamentoPreview(novoAgendamento)
+    setAgendamentoPreview(preview)
     setPasso('confirmacao')
   }
 
-  const handleGerarLinkPagamento = () => {
-    if (!agendamentoPreview) return
-
-    const linkPagamento = `https://pagamento.boraexpandir.com/${agendamentoPreview.id}`
-
-    const agendamentoFinal: Agendamento = {
-      ...(agendamentoPreview as Agendamento),
-      linkPagamento,
-      status: 'confirmado',
+  const carregarAgendamentosDoDia = async (dataIso: string) => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+    if (!backendUrl) {
+      console.error('VITE_BACKEND_URL não configurado; não foi possível buscar disponibilidade')
+      setAgendamentosDia([])
+      return
     }
 
-    setAgendamentos([...agendamentos, agendamentoFinal])
+    try {
+      const response = await fetch(`${backendUrl}/comercial/agendamentos/${dataIso}`)
+      if (!response.ok) {
+        console.error('Erro ao buscar agendamentos do dia')
+        setAgendamentosDia([])
+        return
+      }
+      const data = await response.json()
+      setAgendamentosDia(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Erro ao buscar agendamentos do dia:', error)
+      setAgendamentosDia([])
+    }
+  }
+
+  const isHorarioDisponivel = (hora: string) => {
+    if (!dataSelecionadaIso) return true
+
+    const inicioNovo = new Date(`${dataSelecionadaIso}T${hora}:00Z`)
+    const fimNovo = new Date(inicioNovo.getTime() + duracaoMinutos * 60000)
+
+    return agendamentosDia.every((agendamento) => {
+      const inicioExistente = new Date(agendamento.data_hora)
+      const duracaoExistente = agendamento.duracao_minutos || 60
+      const fimExistente = new Date(inicioExistente.getTime() + duracaoExistente * 60000)
+
+      const sobrepoe = inicioExistente < fimNovo && inicioNovo < fimExistente
+      return !sobrepoe
+    })
+  }
+
+  const handleFinalizarAgendamento = async () => {
+    if (!agendamentoPreview) return
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+    if (!backendUrl) {
+      console.error('VITE_BACKEND_URL não configurado; abortando chamada ao backend')
+      return
+    }
+
+    // Monta payload esperado pelo backend
+    const payload = {
+      nome: agendamentoPreview.cliente.nome,
+      email: agendamentoPreview.cliente.email,
+      telefone: agendamentoPreview.cliente.telefone,
+      data_hora: `${agendamentoPreview.data}T${agendamentoPreview.hora}:00`,
+      produto_id: agendamentoPreview.produto.id,
+      duracao_minutos: agendamentoPreview.duracaoMinutos,
+      status: agendamentoPreview.status,
+    }
+    console.log('Agendamento salvo no backend:', payload)
+
+    try {
+      const response = await fetch(`${backendUrl}/comercial/agendamento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (response.status === 409) {
+        const body = await response.json().catch(() => ({}))
+        const msg = body?.message || 'Horário indisponível'
+        alert(msg)
+        return
+      }
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        console.error('Erro ao salvar agendamento:', body)
+        alert(body?.message || 'Erro ao salvar agendamento')
+        return
+      }
+
+      console.log('Agendamento salvo no backend:', payload)
+    } catch (error) {
+      console.error('Erro ao salvar agendamento:', error)
+      alert('Erro ao salvar agendamento')
+      return
+    }
+
+    setAgendamentos([...agendamentos, agendamentoPreview])
 
     // Reset
     setDiasSelecionados(new Set())
     setHoraSelecionada('')
     setProdutoSelecionado(null)
-    setDadosCliente({ nome: '', email: '', telefone: '' })
+    setClienteSelecionado(null)
     setAgendamentoPreview(null)
+    setDuracaoMinutos(60)
     setPasso('calendario')
   }
 
@@ -266,22 +371,58 @@ export default function Comercial1() {
           {/* HORÁRIOS */}
           {passo === 'horario' && diasSelecionados.size > 0 && (
             <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Selecione o Horário</h3>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Selecione o Horário</h3>
+                  <p className="text-sm text-gray-600">Escolha o início e a duração do atendimento</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {[30, 60, 90].map((duracao) => (
+                    <button
+                      key={duracao}
+                      onClick={() => setDuracaoMinutos(duracao)}
+                      className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                        duracaoMinutos === duracao
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow'
+                          : 'bg-white text-gray-800 border-gray-300 hover:border-emerald-400'
+                      }`}
+                    >
+                      {duracao} min
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {horaSelecionada && (
+                <div className="mb-3 text-sm text-gray-700 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-emerald-600" />
+                  <span>
+                    Início {horaSelecionada} · Término {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {HORARIOS_DISPONIVEIS.map((hora) => (
-                  <button
-                    key={hora}
-                    onClick={() => handleSelecionarHora(hora)}
-                    className={`py-3 px-4 rounded-lg font-medium transition-all ${
-                      horaSelecionada === hora
-                        ? 'bg-emerald-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
-                    }`}
-                  >
-                    <Clock className="h-4 w-4 inline mr-2" />
-                    {hora}
-                  </button>
-                ))}
+                {HORARIOS_DISPONIVEIS.map((hora) => {
+                  const disponivel = isHorarioDisponivel(hora)
+                  return (
+                    <button
+                      key={hora}
+                      onClick={() => disponivel && handleSelecionarHora(hora)}
+                      disabled={!disponivel}
+                      className={`py-3 px-4 rounded-lg font-medium transition-all ${
+                        !disponivel
+                          ? 'bg-gray-200 text-gray-400 border border-gray-200 cursor-not-allowed'
+                          : horaSelecionada === hora
+                            ? 'bg-emerald-600 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
+                      }`}
+                    >
+                      <Clock className="h-4 w-4 inline mr-2" />
+                      {hora}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -374,14 +515,6 @@ export default function Comercial1() {
                   </div>
                 )}
 
-                {clienteSelecionado && (
-                  <button
-                    onClick={handleConfirmarAgendamento}
-                    className="w-full bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
-                  >
-                    Confirmar Agendamento
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -406,7 +539,10 @@ export default function Comercial1() {
             {horaSelecionada && (
               <div className="mb-4 pb-4 border-b border-gray-200">
                 <p className="text-xs text-gray-600 mb-1">Horário</p>
-                <p className="text-lg font-semibold text-gray-900">{horaSelecionada}</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                </p>
+                <p className="text-xs text-gray-600">Duração: {duracaoMinutos} min</p>
               </div>
             )}
 
@@ -430,24 +566,14 @@ export default function Comercial1() {
               </div>
             )}
 
-            {/* Status */}
-            {passo === 'confirmacao' && agendamentoPreview && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2 text-green-700">
-                  <Check className="h-5 w-5" />
-                  <span className="font-semibold">Pronto para pagamento</span>
-                </div>
-              </div>
-            )}
-
-            {/* Botão de Ação */}
-            {passo === 'confirmacao' ? (
+          
+            {agendamentoPreview ? (
               <button
-                onClick={handleGerarLinkPagamento}
+                onClick={handleFinalizarAgendamento}
                 className="w-full bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
               >
-                <Link2 className="h-5 w-5" />
-                Gerar Link de Pagamento
+                <Check className="h-5 w-5" />
+                Confirmar Agendamento
               </button>
             ) : (
               <p className="text-sm text-gray-600 text-center">
@@ -457,9 +583,7 @@ export default function Comercial1() {
                     ? 'Selecione um horário'
                     : passo === 'produto'
                       ? 'Escolha um produto'
-                      : passo === 'cliente'
-                        ? 'Selecione um cliente'
-                        : 'Complete todos os passos'}
+                      : 'Selecione um cliente para confirmar'}
               </p>
             )}
           </div>
@@ -483,7 +607,9 @@ export default function Comercial1() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-600">Horário</p>
-                    <p className="font-semibold text-gray-900">{agendamento.hora}</p>
+                    <p className="font-semibold text-gray-900">
+                      {agendamento.hora} - {calcularHoraFim(agendamento.hora, agendamento.duracaoMinutos)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-600">Produto</p>
@@ -491,7 +617,7 @@ export default function Comercial1() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-600">Cliente</p>
-                    <p className="font-semibold text-gray-900">{agendamento.nomeCliente}</p>
+                    <p className="font-semibold text-gray-900">{agendamento.cliente.nome}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
@@ -516,8 +642,5 @@ export default function Comercial1() {
       )}
     </div>
   )
-}
-function setDadosCliente(arg0: { nome: string; email: string; telefone: string }) {
-    throw new Error('Function not implemented.')
 }
 
