@@ -6,6 +6,7 @@ import type { SidebarGroup } from "../../components/ui/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { ProcessQueue } from "./components/ProcessQueue";
 import { ReviewPanel } from "./components/ReviewPanel";
+import { Config } from "../../components/ui/Config";
 
 const MeusProcessos = () => (
   <div className="p-8">
@@ -24,13 +25,6 @@ const Tarefas = () => (
 const Financeiro = () => (
   <div className="p-8">
     <h1 className="text-3xl font-bold">Financeiro</h1>
-    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
-  </div>
-);
-
-const Configuracoes = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold">Configurações</h1>
     <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
   </div>
 );
@@ -101,7 +95,7 @@ const Index = () => {
             />
             <Route path="tarefas" element={<Tarefas />} />
             <Route path="financeiro" element={<Financeiro />} />
-            <Route path="configuracoes" element={<Configuracoes />} />
+            <Route path="configuracoes" element={<Config />} />
             <Route path="*" element={<Navigate to="." replace />} />
           </Routes>
         )}

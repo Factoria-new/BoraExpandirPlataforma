@@ -7,9 +7,9 @@ import { Dashboard } from './components/Dashboard'
 import { FinancialProcessList } from './pages/FinancialProcessList'
 import Comissoes from './pages/Comissoes'
 import { FinancialDashboard } from './pages/VisaoGeral'
+import { Config } from '../../components/ui/Config'
 
 const Relatorios = () => <div><h2 className="text-xl font-semibold mb-2">Relatórios</h2></div>
-const Config = () => <div><h2 className="text-xl font-semibold mb-2">Configurações</h2></div>
 
 export function FinanceiroApp() {
   // Configuração da sidebar seguindo o padrão do projeto

@@ -171,3 +171,8 @@
 .dark .text-neutral-800,
 .dark .text-slate-800,
 .dark .text-zinc-800 { color: rgb(var(--foreground)) !important; }
+
+/* Force theme reload on class change */
+html { transition: background-color 0.3s ease, color 0.3s ease; }
+html.dark { background-color: rgb(17 24 39); color: rgb(255 255 255); }
+html:not(.dark) { background-color: rgb(255 255 255); color: rgb(17 24 39); }

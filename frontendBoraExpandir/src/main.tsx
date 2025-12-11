@@ -11,6 +11,8 @@ import ParceiroApp from '@/modules/parceiro/ParceiroApp'
 import CadastroParceiro from './modules/parceiro/CadastroParceiro'
 import TelaIndicado from './modules/parceiro/TelaIndicado'
 import Comercial from './modules/comercial/Comercial'
+import { ThemeProvider } from './components/ui/ThemeProvider'
+
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 
@@ -62,6 +64,7 @@ function AppRouter() {
         <Route path="/" element={<Home />} />
         <Route path="/cliente/*" element={<ClienteApp />} />
         <Route path="/comercial/*" element={<Comercial />} />
+   
         <Route path="/financeiro/*" element={<FinanceiroApp />} />
         <Route path="/juridico/*" element={<JuridicoApp />} />
         <Route path="/adm/*" element={<AdmApp />} />
@@ -75,4 +78,8 @@ function AppRouter() {
 }
 
 const root = document.getElementById('root')
-if (root) createRoot(root).render(<AppRouter />)
+if (root) createRoot(root).render(
+  <ThemeProvider>
+    <AppRouter />
+  </ThemeProvider>
+)

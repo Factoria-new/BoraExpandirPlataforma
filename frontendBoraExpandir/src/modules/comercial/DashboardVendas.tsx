@@ -39,8 +39,8 @@ export default function DashboardVendas({
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard de Vendas</h1>
-        <p className="text-gray-600">Foco em metas, comissões e oportunidades</p>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Dashboard de Vendas</h1>
+        <p className="text-gray-600 dark:text-gray-400">Foco em metas, comissões e oportunidades</p>
       </div>
 
       {/* KPIs em Destaque */}
