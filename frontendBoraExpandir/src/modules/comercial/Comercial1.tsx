@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import {  Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2 } from 'lucide-react'
+import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2 } from 'lucide-react'
 // import { useToast } from '../../components/Toast'
 // Update the import path below if Toast is located elsewhere:
 import { useToast } from '../../components/ui/Toast' // <-- Ensure this file exists or update the path
@@ -90,16 +90,41 @@ const HORARIOS_DISPONIVEIS = [
   '18:00',
 ]
 
-export default function Comercial1() {
+export interface Comercial1Props {
+  preSelectedClient?: {
+    id: string
+    nome: string
+    email: string
+    telefone: string
+  }
+}
+
+export default function Comercial1({ preSelectedClient }: Comercial1Props) {
   const { success, error } = useToast()
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
   const [clientes, setClientes] = useState<Cliente[]>(mockClientes)
   const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined)
   const [horaSelecionada, setHoraSelecionada] = useState<string>('')
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
-  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
+
+  // Initialize with preSelectedClient if provided
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(
+    preSelectedClient ? (preSelectedClient as Cliente) : null
+  )
   const [duracaoMinutos, setDuracaoMinutos] = useState<number>(60)
-  const [passo, setPasso] = useState<'cliente' | 'calendario' | 'horario' | 'produto' | 'confirmacao'>('cliente')
+
+  // Start at 'calendario' if client is pre-selected
+  const [passo, setPasso] = useState<'cliente' | 'calendario' | 'horario' | 'produto' | 'confirmacao'>(
+    preSelectedClient ? 'calendario' : 'cliente'
+  )
+
+  useEffect(() => {
+    if (preSelectedClient) {
+      setClienteSelecionado(preSelectedClient as Cliente)
+      setPasso('calendario')
+    }
+  }, [preSelectedClient])
+
   const [searchCliente, setSearchCliente] = useState('')
   const [mostrarListaClientes, setMostrarListaClientes] = useState(false)
   const [agendamentosDia, setAgendamentosDia] = useState<any[]>([])
@@ -305,9 +330,8 @@ export default function Comercial1() {
 
       console.log('Agendamento salvo no backend:', payload)
     } catch (err) {
-      console.error('Erro ao salvar agendamento:', err)
-      error(ERRO.AGENDAMENTO_FALHOU)
-      return
+      console.error('Erro ao salvar agendamento (API offline?), seguindo fluxo mock:', err)
+      // Fallback: continue to show modal even if backend fails
     }
 
     setAgendamentos([...agendamentos, agendamentoPreview])
@@ -333,7 +357,7 @@ export default function Comercial1() {
     }
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
-    
+
     // Se não houver backend, cria localmente
     if (!backendUrl) {
       console.warn('VITE_BACKEND_URL não configurado; criando lead localmente')
@@ -399,296 +423,397 @@ export default function Comercial1() {
   const mostrarFluxo = clienteSelecionado && ((passo === 'calendario') || (passo === 'horario' && dataSelecionada) || passo === 'produto')
 
   return (
-  <div className="max-w-6xl mx-auto py-8">
-    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento de Vendas</h1>
-    <p className="text-gray-600 dark:text-gray-400 mb-8">Selecione ou cadastre um cliente e agende o atendimento</p>
+    <div className="max-w-6xl mx-auto py-8">
+      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento de Vendas</h1>
+      <p className="text-gray-600 dark:text-gray-400 mb-8">Selecione ou cadastre um cliente e agende o atendimento</p>
 
-    {/* SELEÇÃO / CADASTRO DE CLIENTE (só mostra se não houver cliente selecionado) */}
-    {!clienteSelecionado ? (
-      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Cliente</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Busque um cliente ou cadastre um novo lead</p>
-          </div>
-          <button
-            onClick={() => setShowNovoCliente((v) => !v)}
-            className="px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition"
-          >
-            {showNovoCliente ? 'Cancelar cadastro' : 'Cadastrar novo cliente'}
-          </button>
-        </div>
-
-        {/* Busca de cliente */}
-        <div className="relative mb-4" ref={clienteSelectorRef}>
-          <div className="flex items-center gap-2 relative">
-            <Search className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 pointer-events-none" />
-            <input
-              type="text"
-              value={searchCliente}
-              onChange={(e) => {
-                setSearchCliente(e.target.value)
-                setMostrarListaClientes(true)
-              }}
-              onFocus={() => setMostrarListaClientes(true)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-              placeholder="Digite o nome ou email do cliente..."
-            />
+      {/* SELEÇÃO / CADASTRO DE CLIENTE (só mostra se não houver cliente selecionado E não foi pré-selecionado) */}
+      {!clienteSelecionado && !preSelectedClient ? (
+        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Cliente</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Busque um cliente ou cadastre um novo lead</p>
+            </div>
+            <button
+              onClick={() => setShowNovoCliente((v) => !v)}
+              className="px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition"
+            >
+              {showNovoCliente ? 'Cancelar cadastro' : 'Cadastrar novo cliente'}
+            </button>
           </div>
 
-          {mostrarListaClientes && clientesFiltrados.length > 0 && (
-            <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-              {clientesFiltrados.map((cliente) => (
+          {/* Busca de cliente */}
+          <div className="relative mb-4" ref={clienteSelectorRef}>
+            <div className="flex items-center gap-2 relative">
+              <Search className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 pointer-events-none" />
+              <input
+                type="text"
+                value={searchCliente}
+                onChange={(e) => {
+                  setSearchCliente(e.target.value)
+                  setMostrarListaClientes(true)
+                }}
+                onFocus={() => setMostrarListaClientes(true)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                placeholder="Digite o nome ou email do cliente..."
+              />
+            </div>
+
+            {mostrarListaClientes && clientesFiltrados.length > 0 && (
+              <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                {clientesFiltrados.map((cliente) => (
+                  <button
+                    key={cliente.id}
+                    onClick={() => handleSelecionarCliente(cliente)}
+                    className="w-full text-left px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-b border-gray-200 dark:border-neutral-700 last:border-b-0 transition-colors"
+                  >
+                    <div className="font-medium text-gray-800 dark:text-gray-200">{cliente.nome}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{cliente.email}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-500">{cliente.telefone}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {mostrarListaClientes && searchCliente && clientesFiltrados.length === 0 && (
+              <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 p-4">
+                <p className="text-gray-500 dark:text-gray-400 text-center">Nenhum cliente encontrado</p>
+              </div>
+            )}
+          </div>
+
+          {/* Cadastro rápido de lead */}
+          {showNovoCliente && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <input
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                placeholder="Nome"
+                value={novoCliente.nome}
+                onChange={(e) => setNovoCliente((p) => ({ ...p, nome: e.target.value }))}
+              />
+              <input
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                placeholder="E-mail"
+                value={novoCliente.email}
+                onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
+              />
+              <input
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                placeholder="Telefone"
+                value={novoCliente.telefone}
+                onChange={(e) => setNovoCliente((p) => ({ ...p, telefone: e.target.value }))}
+              />
+              <div className="md:col-span-3 flex justify-end">
                 <button
-                  key={cliente.id}
-                  onClick={() => handleSelecionarCliente(cliente)}
-                  className="w-full text-left px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-b border-gray-200 dark:border-neutral-700 last:border-b-0 transition-colors"
+                  onClick={handleCadastrarNovoCliente}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
                 >
-                  <div className="font-medium text-gray-800 dark:text-gray-200">{cliente.nome}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">{cliente.email}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-500">{cliente.telefone}</div>
+                  Salvar e selecionar
                 </button>
-              ))}
+              </div>
             </div>
           )}
 
-          {mostrarListaClientes && searchCliente && clientesFiltrados.length === 0 && (
-            <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 p-4">
-              <p className="text-gray-500 dark:text-gray-400 text-center">Nenhum cliente encontrado</p>
-            </div>
-          )}
-        </div>
-
-        {/* Cadastro rápido de lead */}
-        {showNovoCliente && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <input
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-              placeholder="Nome"
-              value={novoCliente.nome}
-              onChange={(e) => setNovoCliente((p) => ({ ...p, nome: e.target.value }))}
-            />
-            <input
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-              placeholder="E-mail"
-              value={novoCliente.email}
-              onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
-            />
-            <input
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-              placeholder="Telefone"
-              value={novoCliente.telefone}
-              onChange={(e) => setNovoCliente((p) => ({ ...p, telefone: e.target.value }))}
-            />
-            <div className="md:col-span-3 flex justify-end">
-              <button
-                onClick={handleCadastrarNovoCliente}
-                className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-              >
-                Salvar e selecionar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Botão para prosseguir após selecionar */}
-        <div className="flex justify-end mt-6">
-          <button
-            onClick={() => clienteSelecionado ? setPasso('calendario') : error('Selecione ou cadastre um cliente.')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              clienteSelecionado
+          {/* Botão para prosseguir após selecionar */}
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={() => clienteSelecionado ? setPasso('calendario') : error('Selecione ou cadastre um cliente.')}
+              className={`px-4 py-2 rounded-lg font-semibold transition ${clienteSelecionado
                 ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                 : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Prosseguir para calendário
-          </button>
+                }`}
+            >
+              Prosseguir para calendário
+            </button>
+          </div>
         </div>
-      </div>
-    ) : null}
+      ) : null}
 
-    {mostrarFluxo ? (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          {clienteSelecionado && passo === 'calendario' && (
-            <CalendarPicker
-              onDateSelect={handleSelecionarData}
-              selectedDate={dataSelecionada || undefined}
-              disabledDates={[]}
-            />
-          )}
+      {mostrarFluxo ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            {clienteSelecionado && passo === 'calendario' && (
+              <CalendarPicker
+                onDateSelect={handleSelecionarData}
+                selectedDate={dataSelecionada || undefined}
+                disabledDates={[]}
+              />
+            )}
 
-          {clienteSelecionado && passo === 'horario' && dataSelecionada && (
-            <div className="mt-6 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Selecione o Horário</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Escolha o início e a duração do atendimento</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {[30, 60, 90].map((duracao) => (
-                    <button
-                      key={duracao}
-                      onClick={() => setDuracaoMinutos(duracao)}
-                      className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${duracaoMinutos === duracao
+            {clienteSelecionado && passo === 'horario' && dataSelecionada && (
+              <div className="mt-6 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Selecione o Horário</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Escolha o início e a duração do atendimento</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {[30, 60, 90].map((duracao) => (
+                      <button
+                        key={duracao}
+                        onClick={() => setDuracaoMinutos(duracao)}
+                        className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${duracaoMinutos === duracao
                           ? 'bg-emerald-600 text-white border-emerald-600 shadow'
                           : 'bg-white dark:bg-neutral-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-neutral-600 hover:border-emerald-400'}`}
-                    >
-                      {duracao} min
-                    </button>
-                  ))}
+                      >
+                        {duracao} min
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {horaSelecionada && (
-                <div className="mb-3 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-emerald-600" />
-                  <span>
-                    Início {horaSelecionada} · Término {calcularHoraFim(horaSelecionada, duracaoMinutos)}
-                  </span>
-                </div>
-              )}
+                {horaSelecionada && (
+                  <div className="mb-3 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-emerald-600" />
+                    <span>
+                      Início {horaSelecionada} · Término {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                    </span>
+                  </div>
+                )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {HORARIOS_DISPONIVEIS.map((hora) => {
-                  const disponivel = isHorarioDisponivel(hora)
-                  return (
-                    <button
-                      key={hora}
-                      onClick={() => disponivel && handleSelecionarHora(hora)}
-                      disabled={!disponivel}
-                      className={`py-3 px-4 rounded-lg font-medium transition-all ${!disponivel
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {HORARIOS_DISPONIVEIS.map((hora) => {
+                    const disponivel = isHorarioDisponivel(hora)
+                    return (
+                      <button
+                        key={hora}
+                        onClick={() => disponivel && handleSelecionarHora(hora)}
+                        disabled={!disponivel}
+                        className={`py-3 px-4 rounded-lg font-medium transition-all ${!disponivel
                           ? 'bg-gray-200 dark:bg-neutral-700 text-gray-400 dark:text-neutral-500 border border-gray-200 dark:border-neutral-600 cursor-not-allowed'
                           : horaSelecionada === hora
                             ? 'bg-emerald-600 text-white shadow-md'
                             : 'bg-gray-100 dark:bg-neutral-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-neutral-600 border border-gray-300 dark:border-neutral-600'}`}
-                    >
-                      <Clock className="h-4 w-4 inline mr-2" />
-                      {hora}
-                    </button>
-                  )
-                })}
+                      >
+                        <Clock className="h-4 w-4 inline mr-2" />
+                        {hora}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {clienteSelecionado && passo === 'produto' && (
-            <div className="mt-6 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Produto</h3>
-              <div className="space-y-3">
-                {mockProdutos.map((produto) => (
-                  <button
-                    key={produto.id}
-                    onClick={() => handleSelecionarProduto(produto)}
-                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
+            {clienteSelecionado && passo === 'produto' && (
+              <div className="mt-6 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Produto</h3>
+                <div className="space-y-3">
+                  {mockProdutos.map((produto) => (
+                    <button
+                      key={produto.id}
+                      onClick={() => handleSelecionarProduto(produto)}
+                      className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
                         ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
                         : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-1 flex justify-center">
+            <div className="w-full max-w-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-500/10 dark:to-neutral-800 rounded-xl border border-emerald-200 dark:border-emerald-500/30 p-6 shadow-sm sticky top-8">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">Resumo</h3>
+
+              {/* Data */}
+              {dataSelecionada && (
+                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {dataSelecionada.toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleRemoverData}
+                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                    aria-label="Remover data"
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
-                      </div>
-                    </div>
+                    <Trash2 className="h-4 w-4" />
                   </button>
-                ))}
+                </div>
+              )}
+
+              {/* Hora */}
+              {horaSelecionada && (
+                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
+                  </div>
+                  <button
+                    onClick={handleRemoverHora}
+                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                    aria-label="Remover horário"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Produto */}
+              {produtoSelecionado && (
+                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
+                    <p className="text-2xl font-bold text-emerald-600 mt-2">
+                      R$ {produtoSelecionado.valor}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleRemoverProduto}
+                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                    aria-label="Remover produto"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Cliente */}
+              {clienteSelecionado && (
+                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cliente</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
+                  </div>
+                  <button
+                    onClick={handleRemoverCliente}
+                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                    aria-label="Remover cliente"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+
+              <div className="pt-2">
+                <button
+                  onClick={handleFinalizarAgendamento}
+                  disabled={!agendamentoPreview}
+                  className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${agendamentoPreview
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                >
+                  <Check className="h-5 w-5" />
+                  Criar agendamento
+                </button>
+                {!agendamentoPreview && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                    Complete cliente, data, horário e produto para liberar.
+                  </p>
+                )}
               </div>
             </div>
-          )}
+          </div>
         </div>
-
-        <div className="lg:col-span-1 flex justify-center">
-          <div className="w-full max-w-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-500/10 dark:to-neutral-800 rounded-xl border border-emerald-200 dark:border-emerald-500/30 p-6 shadow-sm sticky top-8">
+      ) : (
+        <div className="flex justify-center">
+          <div className="w-full max-w-xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-500/10 dark:to-neutral-800 rounded-xl border border-emerald-200 dark:border-emerald-500/30 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">Resumo</h3>
-
-          {/* Data */}
-          {dataSelecionada && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {dataSelecionada.toLocaleDateString('pt-BR')}
-                </p>
+            {/* Data */}
+            {dataSelecionada && (
+              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {dataSelecionada.toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <button
+                  onClick={handleRemoverData}
+                  className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                  aria-label="Remover data"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={handleRemoverData}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover data"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+            )}
 
-          {/* Hora */}
-          {horaSelecionada && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
+            {/* Hora */}
+            {horaSelecionada && (
+              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
+                </div>
+                <button
+                  onClick={handleRemoverHora}
+                  className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                  aria-label="Remover horário"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={handleRemoverHora}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover horário"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+            )}
 
-          {/* Produto */}
-          {produtoSelecionado && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
-                <p className="text-2xl font-bold text-emerald-600 mt-2">
-                  R$ {produtoSelecionado.valor}
-                </p>
+            {/* Produto */}
+            {produtoSelecionado && (
+              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
+                  <p className="text-2xl font-bold text-emerald-600 mt-2">
+                    R$ {produtoSelecionado.valor}
+                  </p>
+                </div>
+                <button
+                  onClick={handleRemoverProduto}
+                  className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                  aria-label="Remover produto"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={handleRemoverProduto}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover produto"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+            )}
 
-          {/* Cliente */}
-          {clienteSelecionado && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cliente</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
+            {/* Cliente */}
+            {clienteSelecionado && (
+              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cliente</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
+                </div>
+                <button
+                  onClick={handleRemoverCliente}
+                  disabled={!!preSelectedClient}
+                  className={`text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 ${preSelectedClient ? 'opacity-0 cursor-default' : ''}`}
+                  aria-label="Remover cliente"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={handleRemoverCliente}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover cliente"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
+            )}
 
             <div className="pt-2">
               <button
                 onClick={handleFinalizarAgendamento}
                 disabled={!agendamentoPreview}
                 className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${agendamentoPreview
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
               >
                 <Check className="h-5 w-5" />
                 Criar agendamento
@@ -701,170 +826,69 @@ export default function Comercial1() {
             </div>
           </div>
         </div>
-      </div>
-    ) : (
-      <div className="flex justify-center">
-        <div className="w-full max-w-xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-500/10 dark:to-neutral-800 rounded-xl border border-emerald-200 dark:border-emerald-500/30 p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">Resumo</h3>
-          {/* Data */}
-          {dataSelecionada && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {dataSelecionada.toLocaleDateString('pt-BR')}
-                </p>
-              </div>
-              <button
-                onClick={handleRemoverData}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover data"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+      )}
 
-          {/* Hora */}
-          {horaSelecionada && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
-              </div>
-              <button
-                onClick={handleRemoverHora}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover horário"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Produto */}
-          {produtoSelecionado && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
-                <p className="text-2xl font-bold text-emerald-600 mt-2">
-                  R$ {produtoSelecionado.valor}
-                </p>
-              </div>
-              <button
-                onClick={handleRemoverProduto}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover produto"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Cliente */}
-          {clienteSelecionado && (
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cliente</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
-              </div>
-              <button
-                onClick={handleRemoverCliente}
-                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                aria-label="Remover cliente"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          <div className="pt-2">
+      {/* Modal Pagamento / Compartilhar */}
+      {showModalPagamento && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-gray-200 dark:border-neutral-700 p-6 relative">
             <button
-              onClick={handleFinalizarAgendamento}
-              disabled={!agendamentoPreview}
-              className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${agendamentoPreview
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+              onClick={() => setShowModalPagamento(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label="Fechar"
             >
-              <Check className="h-5 w-5" />
-              Criar agendamento
+              <X className="h-5 w-5" />
             </button>
-            {!agendamentoPreview && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                Complete cliente, data, horário e produto para liberar.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    )}
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Link de pagamento gerado</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Envie para o cliente e confirme o pagamento.</p>
 
-    {/* Modal Pagamento / Compartilhar */}
-    {showModalPagamento && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-gray-200 dark:border-neutral-700 p-6 relative">
-          <button
-            onClick={() => setShowModalPagamento(false)}
-            className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-            aria-label="Fechar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Link de pagamento gerado</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Envie para o cliente e confirme o pagamento.</p>
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Link</p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={paymentLink}
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-gray-900 dark:text-white text-sm"
+                />
+                <button
+                  onClick={() => navigator.clipboard?.writeText(paymentLink)}
+                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
 
-          <div className="mb-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Link</p>
-            <div className="flex items-center gap-2">
-              <input
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Mensagem pronta</p>
+              <textarea
                 readOnly
-                value={paymentLink}
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-gray-900 dark:text-white text-sm"
+                value={shareMessage}
+                className="w-full h-24 px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-gray-900 dark:text-white text-sm"
               />
+            </div>
+
+            <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => navigator.clipboard?.writeText(paymentLink)}
-                className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+                onClick={() => navigator.clipboard?.writeText(shareMessage)}
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
               >
-                Copiar
+                Copiar mensagem
               </button>
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button
+                  onClick={() => navigator.share({ text: shareMessage, url: paymentLink }).catch(() => { })}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                >
+                  Compartilhar (nativo)
+                </button>
+              )}
             </div>
           </div>
-
-          <div className="mb-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Mensagem pronta</p>
-            <textarea
-              readOnly
-              value={shareMessage}
-              className="w-full h-24 px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-gray-900 dark:text-white text-sm"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => navigator.clipboard?.writeText(shareMessage)}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
-            >
-              Copiar mensagem
-            </button>
-            {typeof navigator !== 'undefined' && navigator.share && (
-              <button
-                onClick={() => navigator.share({ text: shareMessage, url: paymentLink }).catch(() => {})}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
-              >
-                Compartilhar (nativo)
-              </button>
-            )}
-          </div>
         </div>
-      </div>
-    )}
+      )}
 
-  </div>
+    </div>
   )
 }
 

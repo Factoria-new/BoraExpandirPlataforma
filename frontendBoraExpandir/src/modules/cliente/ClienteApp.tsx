@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
 import { Dashboard } from './components/Dashboard'
@@ -11,20 +11,22 @@ import { Notifications } from './components/Notifications'
 import { DocumentModal } from './components/DocumentModal'
 import { Traducao } from './components/Traducao'
 import Parceiro from './components/Parceiro'
-import { 
-  mockClient, 
-  mockDocuments, 
-  mockProcess, 
-  mockNotifications, 
+import { ClienteAgendamento } from './components/ClienteAgendamento'
+import {
+  mockClient,
+  mockDocuments,
+  mockProcess,
+  mockNotifications,
   mockRequiredDocuments,
   mockApprovedDocuments,
   mockTranslatedDocuments,
 } from './lib/mock-data'
 import { Document, Notification, ApprovedDocument, TranslatedDocument } from './types'
-import { Home, FileText, Upload, GitBranch, Bell, Languages, Users } from 'lucide-react'
+import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar } from 'lucide-react'
 
 export function ClienteApp() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [documents, setDocuments] = useState<Document[]>(mockDocuments)
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
@@ -32,13 +34,12 @@ export function ClienteApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [approvedDocuments, setApprovedDocuments] = useState<ApprovedDocument[]>(mockApprovedDocuments)
   const [translatedDocuments, setTranslatedDocuments] = useState<TranslatedDocument[]>(mockTranslatedDocuments)
-  
+
   const unreadNotifications = notifications.filter(n => !n.read).length
   const isPartnerOnly = !!mockClient.isPartner && mockClient.isClient === false
 
   const handleBecomeClient = () => {
-    // Placeholder action: redirect to a sales/checkout page or open a modal
-    window.location.href = '/contato?origem=parceiro-cta'
+    navigate('/cliente/agendamento')
   }
 
   const handleUpload = (file: File, documentType: string) => {
@@ -174,37 +175,39 @@ export function ClienteApp() {
   // Configuração da sidebar seguindo o padrão do projeto
   const sidebarGroups: SidebarGroup[] = isPartnerOnly
     ? [
-        {
-          label: 'Menu Principal',
-          items: [
-            { label: 'Dashboard', to: '/cliente', icon: Home },
-            { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
-          ],
-        },
-      ]
+      {
+        label: 'Menu Principal',
+        items: [
+          { label: 'Dashboard', to: '/cliente', icon: Home },
+          { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
+        ],
+      },
+    ]
     : [
-        {
-          label: 'Menu Principal',
-          items: [
-            { label: 'Dashboard', to: '/cliente', icon: Home },
-            { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
-            { label: 'Status Documentos', to: '/cliente/documentos', icon: FileText },
-            { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
-            { label: 'Tradução', to: '/cliente/traducao', icon: Languages },
-            { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
-            { 
-              label: 'Notificações', 
-              to: '/cliente/notificacoes', 
-              icon: Bell,
-              badge: unreadNotifications > 0 ? (
-                <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-500 text-white">
-                  {unreadNotifications}
-                </span>
-              ) : undefined
-            },
-          ],
-        },
-      ]
+      {
+        label: 'Menu Principal',
+        items: [
+          { label: 'Dashboard', to: '/cliente', icon: Home },
+          { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
+          { label: 'Agendamento', to: '/cliente/agendamento', icon: Calendar },
+          { label: 'Status Documentos', to: '/cliente/documentos', icon: FileText },
+          { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
+          { label: 'Tradução', to: '/cliente/traducao', icon: Languages },
+          { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
+
+          {
+            label: 'Notificações',
+            to: '/cliente/notificacoes',
+            icon: Bell,
+            badge: unreadNotifications > 0 ? (
+              <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-500 text-white">
+                {unreadNotifications}
+              </span>
+            ) : undefined
+          },
+        ],
+      },
+    ]
 
   // Modo parceiro (não cliente)
   if (isPartnerOnly) {
@@ -226,6 +229,7 @@ export function ClienteApp() {
           <Routes>
             <Route index element={<PartnerDashboard client={mockClient} onBecomeClient={handleBecomeClient} />} />
             <Route path="parceiro" element={<Parceiro />} />
+            <Route path="agendamento" element={<ClienteAgendamento client={mockClient} />} />
           </Routes>
         </main>
       </div>
@@ -271,35 +275,36 @@ export function ClienteApp() {
           </svg>
         </button>
       )}
-      
+
       <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
         <Routes>
-          <Route 
-            index 
+          <Route
+            index
             element={
               <Dashboard
                 client={mockClient}
                 documents={documents}
                 process={mockProcess}
               />
-            } 
+            }
           />
-          <Route 
-            path="processo" 
-            element={<ProcessTimeline process={mockProcess} />} 
+          <Route
+            path="processo"
+            element={<ProcessTimeline process={mockProcess} />}
           />
-          <Route 
-            path="documentos" 
+          <Route path="agendamento" element={<ClienteAgendamento client={mockClient} />} />
+          <Route
+            path="documentos"
             element={
-              <DocumentStatus 
-                documents={documents} 
+              <DocumentStatus
+                documents={documents}
                 onUpload={handleUploadFromStatus}
                 onView={handleViewDocument}
               />
-            } 
+            }
           />
-          <Route 
-            path="upload" 
+          <Route
+            path="upload"
             element={
               <DocumentUpload
                 documents={documents}
@@ -307,10 +312,10 @@ export function ClienteApp() {
                 onUpload={handleUpload}
                 onDelete={handleDeleteDocument}
               />
-            } 
+            }
           />
-          <Route 
-            path="traducao" 
+          <Route
+            path="traducao"
             element={
               <Traducao
                 approvedDocuments={approvedDocuments}
@@ -318,16 +323,16 @@ export function ClienteApp() {
                 onUploadTranslation={handleUploadTranslation}
                 onRequestQuote={handleRequestQuote}
               />
-            } 
+            }
           />
-          <Route 
-            path="parceiro" 
+          <Route
+            path="parceiro"
             element={
               <Parceiro />
-            } 
+            }
           />
-          <Route 
-            path="notificacoes" 
+          <Route
+            path="notificacoes"
             element={
               <Notifications
                 notifications={notifications}
@@ -335,7 +340,7 @@ export function ClienteApp() {
                 onMarkAllAsRead={handleMarkAllAsRead}
                 onDismiss={handleDismissNotification}
               />
-            } 
+            }
           />
         </Routes>
       </main>

@@ -28,7 +28,9 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { Plus, MoreVertical } from "lucide-react";
+import { Checkbox } from "../../components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+
 
 type UserRole = "sales" | "legal" | "finance";
 
@@ -39,6 +41,7 @@ interface User {
   role: UserRole;
   lastActive: string;
   avatar: string;
+  isSupervisor?: boolean;
 }
 
 const mockUsers: User[] = [
@@ -89,6 +92,12 @@ const getRoleLabel = (role: UserRole): string => {
 export default function UserManagement() {
   const [users] = useState<User[]>(mockUsers);
   const [open, setOpen] = useState(false);
+  const [newUser, setNewUser] = useState<Partial<User>>({});
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) setNewUser({});
+  }
 
   return (
     <div className="space-y-6">
@@ -99,7 +108,7 @@ export default function UserManagement() {
             Gerencie usuários e permissões do sistema
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" />
@@ -153,6 +162,14 @@ export default function UserManagement() {
                   className="bg-input border-border text-foreground"
                 />
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="supervisor"
+                  checked={newUser.isSupervisor || false}
+                  onCheckedChange={(checked) => setNewUser(prev => ({ ...prev, isSupervisor: checked as boolean }))}
+                />
+                <Label htmlFor="supervisor" className="text-foreground">Usuário é supervisor?</Label>
+              </div>
             </div>
             <div className="flex justify-end gap-3">
               <Button
@@ -163,7 +180,10 @@ export default function UserManagement() {
                 Cancelar
               </Button>
               <Button
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  console.log('Saving user:', newUser)
+                  setOpen(false)
+                }}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Enviar Convite
