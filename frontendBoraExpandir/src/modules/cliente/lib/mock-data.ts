@@ -11,7 +11,7 @@ export const mockClient: Client = {
   paymentStatus: 'confirmed',
   accessGranted: true,
   isPartner: true,
-  isClient: true,
+  isClient: false,
   createdAt: new Date('2024-01-15'),
 }
 

@@ -97,9 +97,10 @@ export interface Comercial1Props {
     email: string
     telefone: string
   }
+  isClientView?: boolean
 }
 
-export default function Comercial1({ preSelectedClient }: Comercial1Props) {
+export default function Comercial1({ preSelectedClient, isClientView = false }: Comercial1Props) {
   const { success, error } = useToast()
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
   const [clientes, setClientes] = useState<Cliente[]>(mockClientes)
@@ -283,15 +284,19 @@ export default function Comercial1({ preSelectedClient }: Comercial1Props) {
     if (!agendamentoPreview) return
 
     const resumoTexto = `Oi ${agendamentoPreview.cliente.nome}! Seu agendamento está marcado para ${agendamentoPreview.data} às ${agendamentoPreview.hora} (${agendamentoPreview.duracaoMinutos} min) - ${agendamentoPreview.produto.nome}.`
-    const linkPagamentoGerado = `https://pay.example.com/${agendamentoPreview.id}`
+    let finalPaymentLink = `https://pay.example.com/${agendamentoPreview.id}`
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
     if (!backendUrl) {
       console.error('VITE_BACKEND_URL não configurado; abortando chamada ao backend')
-      // Mesmo sem backend, exibe modal com link mockado
-      setPaymentLink(linkPagamentoGerado)
-      setShareMessage(`${resumoTexto} Link de pagamento: ${linkPagamentoGerado}`)
-      setShowModalPagamento(true)
+      // Mesmo sem backend, exibe modal ou redireciona
+      if (isClientView) {
+        window.location.href = finalPaymentLink
+      } else {
+        setPaymentLink(finalPaymentLink)
+        setShareMessage(`${resumoTexto} Link de pagamento: ${finalPaymentLink}`)
+        setShowModalPagamento(true)
+      }
       return
     }
 
@@ -328,26 +333,37 @@ export default function Comercial1({ preSelectedClient }: Comercial1Props) {
         return
       }
 
+      const responseData = await response.json().catch(() => ({}))
+      if (responseData && responseData.paymentLink) {
+        finalPaymentLink = responseData.paymentLink
+      }
+
       console.log('Agendamento salvo no backend:', payload)
     } catch (err) {
       console.error('Erro ao salvar agendamento (API offline?), seguindo fluxo mock:', err)
-      // Fallback: continue to show modal even if backend fails
+      // Fallback: continue
     }
 
     setAgendamentos([...agendamentos, agendamentoPreview])
 
-    // Sucesso: prepara modal de pagamento/compartilhamento
-    setPaymentLink(linkPagamentoGerado)
-    setShareMessage(`${resumoTexto} Link de pagamento: ${linkPagamentoGerado}`)
-    setShowModalPagamento(true)
+    if (isClientView) {
+      window.location.href = finalPaymentLink
+    } else {
+      // Sucesso: prepara modal de pagamento/compartilhamento
+      setPaymentLink(finalPaymentLink)
+      setShareMessage(`${resumoTexto} Link de pagamento: ${finalPaymentLink}`)
+      setShowModalPagamento(true)
+    }
 
-    // Reset
-    setDataSelecionada(undefined)
-    setHoraSelecionada('')
-    setProdutoSelecionado(null)
-    setClienteSelecionado(null)
-    setDuracaoMinutos(60)
-    setPasso('calendario')
+    // Reset only if not redirecting (though redirect will navigate away anyway)
+    if (!isClientView) {
+      setDataSelecionada(undefined)
+      setHoraSelecionada('')
+      setProdutoSelecionado(null)
+      setClienteSelecionado(null)
+      setDuracaoMinutos(60)
+      setPasso('calendario')
+    }
   }
 
   const handleCadastrarNovoCliente = async () => {
