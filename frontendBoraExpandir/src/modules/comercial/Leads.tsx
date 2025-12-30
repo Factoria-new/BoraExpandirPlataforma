@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
-import { Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { Plus, Trash2, Mail, Phone, Building2, Filter, X, Search } from 'lucide-react'
 import type { Lead } from '../../types/comercial'
 import { Badge } from '../../components/ui/Badge'
+import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
+import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
 
 const mockLeads: Lead[] = [
   {
@@ -109,42 +111,115 @@ const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destruc
   },
 }
 
+const sortOptions: SortOption[] = [
+  { value: 'nome', label: 'Nome' },
+  { value: 'created_at', label: 'Data de Cadastro' },
+  { value: 'updated_at', label: 'Última Atualização' },
+  { value: 'status', label: 'Status' },
+]
+
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>(mockLeads)
   const [searchTerm, setSearchTerm] = useState('')
+  const [timeRange, setTimeRange] = useState<TimeRange>('current_month')
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [showFilters, setShowFilters] = useState(false)
 
-  const filteredLeads = leads.filter(
-    lead =>
-      lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredLeads = useMemo(() => {
+    // First filter by search term
+    let filtered = leads.filter(
+      lead =>
+        lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.email.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    // Then filter by time range
+    filtered = filterByTimeRange(filtered, timeRange)
+
+    // Finally sort
+    return sortData(filtered, sortBy, sortDirection)
+  }, [leads, searchTerm, timeRange, sortBy, sortDirection])
 
   const handleDeleteLead = (id: string) => {
     setLeads(prev => prev.filter(lead => lead.id !== id))
   }
 
+  const handleSortChange = (newSortBy: string, newDirection: SortDirection) => {
+    setSortBy(newSortBy)
+    setSortDirection(newDirection)
+  }
+
   return (
     <div>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Leads</h1>
         <p className="text-gray-600 dark:text-gray-400">
           Gerencie seus leads e acompanhe o status de cada um
         </p>
       </div>
 
-      <div className="mb-6 flex gap-4 items-center">
-        <input
-          type="text"
-          placeholder="Buscar por nome, email ou empresa..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
-        <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors">
-          <Plus className="h-5 w-5" />
-          Novo Lead
-        </button>
+      {/* Barra de Ações */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        {/* Campo de Busca */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nome, email ou empresa..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+
+        {/* Botões de Ação */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${
+              showFilters
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300'
+                : 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
+            }`}
+          >
+            {showFilters ? (
+              <>
+                <X className="h-5 w-5" />
+                <span className="hidden sm:inline">Fechar</span>
+              </>
+            ) : (
+              <>
+                <Filter className="h-5 w-5" />
+                <span className="hidden sm:inline">Filtros</span>
+              </>
+            )}
+          </button>
+          
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors whitespace-nowrap">
+            <Plus className="h-5 w-5" />
+            <span className="hidden sm:inline">Novo Lead</span>
+          </button>
+        </div>
       </div>
+
+      {/* Painel de Filtros Colapsável */}
+      {showFilters && (
+        <div className="mb-6 p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-neutral-800 dark:to-neutral-800/50 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm animate-in slide-in-from-top-2 duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TimeRangeFilter
+              value={timeRange}
+              onChange={setTimeRange}
+            />
+            <SortControl
+              sortBy={sortBy}
+              sortDirection={sortDirection}
+              onSortChange={handleSortChange}
+              options={sortOptions}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 overflow-hidden">
         {filteredLeads.length === 0 ? (

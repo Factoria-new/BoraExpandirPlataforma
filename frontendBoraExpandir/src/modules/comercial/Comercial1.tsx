@@ -114,15 +114,16 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   )
   const [duracaoMinutos, setDuracaoMinutos] = useState<number>(60)
 
-  // Start at 'calendario' if client is pre-selected
+  // Novo fluxo: Produto -> Data -> Hora -> Lead (ou apenas Produto -> Data -> Hora se for cliente)
   const [passo, setPasso] = useState<'cliente' | 'calendario' | 'horario' | 'produto' | 'confirmacao'>(
-    preSelectedClient ? 'calendario' : 'cliente'
+    'produto'
   )
 
   useEffect(() => {
     if (preSelectedClient) {
       setClienteSelecionado(preSelectedClient as Cliente)
-      setPasso('calendario')
+      // Cliente já está selecionado, começa no produto
+      setPasso('produto')
     }
   }, [preSelectedClient])
 
@@ -193,7 +194,12 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleSelecionarHora = (hora: string) => {
     setHoraSelecionada(hora)
-    setPasso('produto')
+    // Se for cliente (já tem lead), finaliza. Senão, vai para seleção de lead
+    if (isClientView || preSelectedClient) {
+      setPasso('confirmacao')
+    } else {
+      setPasso('cliente')
+    }
   }
 
   const handleRemoverData = () => {
@@ -209,6 +215,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleRemoverProduto = () => {
     setProdutoSelecionado(null)
+    setDataSelecionada(undefined)
+    setHoraSelecionada('')
     setPasso('produto')
   }
 
@@ -231,14 +239,14 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleSelecionarProduto = (produto: Produto) => {
     setProdutoSelecionado(produto)
-    setPasso('cliente')
+    setPasso('calendario')
   }
 
   const handleSelecionarCliente = (cliente: Cliente) => {
     setClienteSelecionado(cliente)
     setSearchCliente('')
     setMostrarListaClientes(false)
-    setPasso('calendario')
+    setPasso('confirmacao')
   }
 
   const carregarAgendamentosDoDia = async (dataIso: string) => {
@@ -429,127 +437,55 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       setMostrarListaClientes(false)
       setNovoCliente({ id: '', nome: '', email: '', telefone: '' })
       success('Lead cadastrado e selecionado.')
-      setPasso('calendario')
+      setPasso('confirmacao')
     } catch (err) {
       console.error('Erro ao registrar lead:', err)
       error('Erro ao registrar lead. Tente novamente.')
     }
   }
 
-  const mostrarFluxo = clienteSelecionado && ((passo === 'calendario') || (passo === 'horario' && dataSelecionada) || passo === 'produto')
+  const mostrarFluxo = passo === 'produto' || passo === 'calendario' || (passo === 'horario' && dataSelecionada) || passo === 'cliente' || passo === 'confirmacao'
 
   return (
     <div className="max-w-6xl mx-auto py-8">
       <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento de Vendas</h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-8">Selecione ou cadastre um cliente e agende o atendimento</p>
+      <p className="text-gray-600 dark:text-gray-400 mb-8">Escolha o produto, selecione data e horário, e finalize o agendamento</p>
 
-      {/* SELEÇÃO / CADASTRO DE CLIENTE (só mostra se não houver cliente selecionado E não foi pré-selecionado) */}
-      {!clienteSelecionado && !preSelectedClient ? (
-        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Cliente</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Busque um cliente ou cadastre um novo lead</p>
-            </div>
-            <button
-              onClick={() => setShowNovoCliente((v) => !v)}
-              className="px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition"
-            >
-              {showNovoCliente ? 'Cancelar cadastro' : 'Cadastrar novo cliente'}
-            </button>
-          </div>
 
-          {/* Busca de cliente */}
-          <div className="relative mb-4" ref={clienteSelectorRef}>
-            <div className="flex items-center gap-2 relative">
-              <Search className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 pointer-events-none" />
-              <input
-                type="text"
-                value={searchCliente}
-                onChange={(e) => {
-                  setSearchCliente(e.target.value)
-                  setMostrarListaClientes(true)
-                }}
-                onFocus={() => setMostrarListaClientes(true)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                placeholder="Digite o nome ou email do cliente..."
-              />
-            </div>
-
-            {mostrarListaClientes && clientesFiltrados.length > 0 && (
-              <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                {clientesFiltrados.map((cliente) => (
-                  <button
-                    key={cliente.id}
-                    onClick={() => handleSelecionarCliente(cliente)}
-                    className="w-full text-left px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-b border-gray-200 dark:border-neutral-700 last:border-b-0 transition-colors"
-                  >
-                    <div className="font-medium text-gray-800 dark:text-gray-200">{cliente.nome}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">{cliente.email}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-500">{cliente.telefone}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {mostrarListaClientes && searchCliente && clientesFiltrados.length === 0 && (
-              <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 p-4">
-                <p className="text-gray-500 dark:text-gray-400 text-center">Nenhum cliente encontrado</p>
-              </div>
-            )}
-          </div>
-
-          {/* Cadastro rápido de lead */}
-          {showNovoCliente && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <input
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                placeholder="Nome"
-                value={novoCliente.nome}
-                onChange={(e) => setNovoCliente((p) => ({ ...p, nome: e.target.value }))}
-              />
-              <input
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                placeholder="E-mail"
-                value={novoCliente.email}
-                onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
-              />
-              <input
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                placeholder="Telefone"
-                value={novoCliente.telefone}
-                onChange={(e) => setNovoCliente((p) => ({ ...p, telefone: e.target.value }))}
-              />
-              <div className="md:col-span-3 flex justify-end">
-                <button
-                  onClick={handleCadastrarNovoCliente}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                >
-                  Salvar e selecionar
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Botão para prosseguir após selecionar */}
-          <div className="flex justify-end mt-6">
-            <button
-              onClick={() => clienteSelecionado ? setPasso('calendario') : error('Selecione ou cadastre um cliente.')}
-              className={`px-4 py-2 rounded-lg font-semibold transition ${clienteSelecionado
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                }`}
-            >
-              Prosseguir para calendário
-            </button>
-          </div>
-        </div>
-      ) : null}
-
+      {/* Fluxo de agendamento: Produto → Data → Hora → Lead */}
       {mostrarFluxo ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            {clienteSelecionado && passo === 'calendario' && (
+            {/* PASSO 1: Seleção de Produto */}
+            {passo === 'produto' && (
+              <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Produto</h3>
+                <div className="space-y-3">
+                  {mockProdutos.map((produto) => (
+                    <button
+                      key={produto.id}
+                      onClick={() => handleSelecionarProduto(produto)}
+                      className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
+                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
+                        : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PASSO 2: Seleção de Data */}
+            {passo === 'calendario' && (
               <CalendarPicker
                 onDateSelect={handleSelecionarData}
                 selectedDate={dataSelecionada || undefined}
@@ -557,7 +493,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               />
             )}
 
-            {clienteSelecionado && passo === 'horario' && dataSelecionada && (
+            {/* PASSO 3: Seleção de Horário */}
+            {passo === 'horario' && dataSelecionada && (
               <div className="mt-6 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                   <div>
@@ -611,30 +548,93 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               </div>
             )}
 
-            {clienteSelecionado && passo === 'produto' && (
-              <div className="mt-6 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Produto</h3>
-                <div className="space-y-3">
-                  {mockProdutos.map((produto) => (
-                    <button
-                      key={produto.id}
-                      onClick={() => handleSelecionarProduto(produto)}
-                      className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
-                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
-                        : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+            {/* PASSO 4: Seleção de Lead (apenas no módulo comercial) */}
+            {passo === 'cliente' && !isClientView && !preSelectedClient && (
+              <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Lead</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Busque um lead ou cadastre um novo</p>
+                  </div>
+                  <button
+                    onClick={() => setShowNovoCliente((v) => !v)}
+                    className="px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition"
+                  >
+                    {showNovoCliente ? 'Cancelar cadastro' : 'Cadastrar novo lead'}
+                  </button>
                 </div>
+
+                {/* Busca de lead */}
+                <div className="relative mb-4" ref={clienteSelectorRef}>
+                  <div className="flex items-center gap-2 relative">
+                    <Search className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchCliente}
+                      onChange={(e) => {
+                        setSearchCliente(e.target.value)
+                        setMostrarListaClientes(true)
+                      }}
+                      onFocus={() => setMostrarListaClientes(true)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="Digite o nome ou email do lead..."
+                    />
+                  </div>
+
+                  {mostrarListaClientes && clientesFiltrados.length > 0 && (
+                    <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                      {clientesFiltrados.map((cliente) => (
+                        <button
+                          key={cliente.id}
+                          onClick={() => handleSelecionarCliente(cliente)}
+                          className="w-full text-left px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-b border-gray-200 dark:border-neutral-700 last:border-b-0 transition-colors"
+                        >
+                          <div className="font-medium text-gray-800 dark:text-gray-200">{cliente.nome}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">{cliente.email}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-500">{cliente.telefone}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {mostrarListaClientes && searchCliente && clientesFiltrados.length === 0 && (
+                    <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 p-4">
+                      <p className="text-gray-500 dark:text-gray-400 text-center">Nenhum lead encontrado</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cadastro rápido de lead */}
+                {showNovoCliente && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <input
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                      placeholder="Nome"
+                      value={novoCliente.nome}
+                      onChange={(e) => setNovoCliente((p) => ({ ...p, nome: e.target.value }))}
+                    />
+                    <input
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                      placeholder="E-mail"
+                      value={novoCliente.email}
+                      onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
+                    />
+                    <input
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                      placeholder="Telefone"
+                      value={novoCliente.telefone}
+                      onChange={(e) => setNovoCliente((p) => ({ ...p, telefone: e.target.value }))}
+                    />
+                    <div className="md:col-span-3 flex justify-end">
+                      <button
+                        onClick={handleCadastrarNovoCliente}
+                        className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                      >
+                        Salvar e selecionar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -702,18 +702,18 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 </div>
               )}
 
-              {/* Cliente */}
+              {/* Lead */}
               {clienteSelecionado && (
                 <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cliente</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lead</p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
                   </div>
                   <button
                     onClick={handleRemoverCliente}
                     className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                    aria-label="Remover cliente"
+                    aria-label="Remover lead"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -734,7 +734,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 </button>
                 {!agendamentoPreview && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                    Complete cliente, data, horário e produto para liberar.
+                    Complete lead, data, horário e produto para liberar.
                   </p>
                 )}
               </div>
@@ -804,11 +804,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               </div>
             )}
 
-            {/* Cliente */}
+            {/* Lead */}
             {clienteSelecionado && (
               <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cliente</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lead</p>
                   <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
                 </div>
@@ -816,7 +816,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   onClick={handleRemoverCliente}
                   disabled={!!preSelectedClient}
                   className={`text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 ${preSelectedClient ? 'opacity-0 cursor-default' : ''}`}
-                  aria-label="Remover cliente"
+                  aria-label="Remover lead"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -836,7 +836,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               </button>
               {!agendamentoPreview && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                  Complete cliente, data, horário e produto para liberar.
+                  Complete lead, data, horário e produto para liberar.
                 </p>
               )}
             </div>

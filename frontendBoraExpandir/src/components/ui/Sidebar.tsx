@@ -1,14 +1,15 @@
 import React, { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type SidebarItem = {
   label: string
-  to: string
+  to?: string
   icon?: React.ComponentType<{ className?: string }>
   badge?: React.ReactNode
   disabled?: boolean
+  children?: SidebarItem[]
 }
 
 export type SidebarGroup = {
@@ -21,6 +22,82 @@ type SidebarProps = {
   sidebarOpen?: boolean
   setSidebarOpen?: (open: boolean) => void
 }
+
+// Component for rendering individual sidebar items (with support for expandable children)
+function SidebarItemComponent({ item }: { item: SidebarItem }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const { pathname } = useLocation()
+  const Icon = item.icon
+
+  // Check if any child is active
+  const hasActiveChild = item.children?.some(child => pathname === child.to)
+
+  // If item has children, render as expandable
+  if (item.children && item.children.length > 0) {
+    return (
+      <li>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={cn(
+            'w-full group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
+            'hover:bg-sidebar-accent',
+            hasActiveChild ? 'bg-sidebar-accent text-sidebar-primary' : 'text-foreground',
+            item.disabled && 'opacity-50 pointer-events-none'
+          )}
+        >
+          {Icon && (
+            <Icon className={cn('h-4 w-4', hasActiveChild ? 'text-sidebar-primary' : 'text-muted-foreground')} />
+          )}
+          <span className="flex-1 truncate text-left">{item.label}</span>
+          {item.badge}
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        {isExpanded && (
+          <ul className="ml-6 mt-1 space-y-1">
+            {item.children.map((child, idx) => (
+              <SidebarItemComponent key={idx} item={child} />
+            ))}
+          </ul>
+        )}
+      </li>
+    )
+  }
+
+  // Regular item with link
+  if (!item.to) {
+    return null
+  }
+
+  return (
+    <li>
+      <NavLink
+        to={item.to}
+        end={true}
+        className={({ isActive }) => cn(
+          'group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
+          'hover:bg-sidebar-accent',
+          isActive ? 'bg-sidebar-accent text-sidebar-primary' : 'text-foreground',
+          item.disabled && 'opacity-50 pointer-events-none'
+        )}
+      >
+        {({ isActive }) => (
+          <>
+            {Icon && (
+              <Icon className={cn('h-4 w-4', isActive ? 'text-sidebar-primary' : 'text-muted-foreground')} />
+            )}
+            <span className="flex-1 truncate">{item.label}</span>
+            {item.badge}
+          </>
+        )}
+      </NavLink>
+    </li>
+  )
+}
+
 
 export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: SidebarProps) {
   const { pathname } = useLocation()
@@ -85,33 +162,9 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
               <div className="px-2 py-2 text-xs uppercase tracking-wide text-muted-foreground">{group.label}</div>
             )}
             <ul className="space-y-1">
-              {group.items.map((item, ii) => {
-                const Icon = item.icon
-                return (
-                  <li key={`${gi}-${ii}`}>
-                    <NavLink
-                      to={item.to}
-                      end={true}
-                      className={({ isActive }) => cn(
-                        'group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
-                        'hover:bg-sidebar-accent',
-                        isActive ? 'bg-sidebar-accent text-sidebar-primary' : 'text-foreground',
-                        item.disabled && 'opacity-50 pointer-events-none'
-                      )}
-                    >
-                      {({ isActive }) => (
-                        <>
-                          {Icon && (
-                            <Icon className={cn('h-4 w-4', isActive ? 'text-sidebar-primary' : 'text-muted-foreground')} />
-                          )}
-                          <span className="flex-1 truncate">{item.label}</span>
-                          {item.badge}
-                        </>
-                      )}
-                    </NavLink>
-                  </li>
-                )
-              })}
+              {group.items.map((item, ii) => (
+                <SidebarItemComponent key={`${gi}-${ii}`} item={item} />
+              ))}
             </ul>
           </div>
         ))}
