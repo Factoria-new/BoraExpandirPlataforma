@@ -95,19 +95,21 @@ export interface AssinaturaDigital {
 export interface Lead {
   id: string
   nome: string
-  email: string
+  email?: string | null
   telefone: string
   empresa?: string
   status: 'pendente' | 'contatado' | 'qualificado' | 'convertido' | 'perdido'
+  origem_ia?: boolean
   created_at: string
   updated_at: string
 }
 
 export interface LeadFormData {
   nome: string
-  email: string
+  email?: string | null
   telefone: string
   empresa?: string
+  origem_ia?: boolean
 }
 
 export interface Agendamento {

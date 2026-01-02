@@ -9,7 +9,7 @@ import { CalendarPicker } from '../../components/ui/CalendarPicker'
 interface Cliente {
   id: string
   nome: string
-  email: string
+  email?: string | null
   telefone: string
 }
 
@@ -34,11 +34,11 @@ interface Agendamento {
 
 const mockClientes: Cliente[] = [
   { id: '1', nome: 'João Silva', email: 'joao@example.com', telefone: '(11) 99999-1111' },
-  { id: '2', nome: 'Maria Santos', email: 'maria@example.com', telefone: '(11) 99999-2222' },
+  { id: '2', nome: 'Maria Santos', email: null, telefone: '(11) 99999-2222' }, // Lead da IA sem email
   { id: '3', nome: 'Pedro Oliveira', email: 'pedro@example.com', telefone: '(11) 99999-3333' },
-  { id: '4', nome: 'Ana Costa', email: 'ana@example.com', telefone: '(11) 99999-4444' },
+  { id: '4', nome: 'Ana Costa', email: null, telefone: '(11) 99999-4444' }, // Lead da IA sem email
   { id: '5', nome: 'Carlos Mendes', email: 'carlos@example.com', telefone: '(11) 99999-5555' },
-  { id: '6', nome: 'Lucia Ferreira', email: 'lucia@example.com', telefone: '(11) 99999-6666' },
+  { id: '6', nome: 'Lucia Ferreira', email: null, telefone: '(11) 99999-6666' }, // Lead da IA sem email
 ]
 
 const mockProdutos: Produto[] = [
@@ -113,6 +113,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     preSelectedClient ? (preSelectedClient as Cliente) : null
   )
   const [duracaoMinutos, setDuracaoMinutos] = useState<number>(60)
+  const [emailTemporario, setEmailTemporario] = useState<string>('')
 
   // Novo fluxo: Produto -> Data -> Hora -> Lead (ou apenas Produto -> Data -> Hora se for cliente)
   const [passo, setPasso] = useState<'cliente' | 'calendario' | 'horario' | 'produto' | 'confirmacao'>(
@@ -148,12 +149,16 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     return clientes.filter(
       (cliente) =>
         cliente.nome.toLowerCase().includes(searchCliente.toLowerCase()) ||
-        cliente.email.toLowerCase().includes(searchCliente.toLowerCase())
+        (cliente.email && cliente.email.toLowerCase().includes(searchCliente.toLowerCase()))
     )
   }, [searchCliente, clientes])
 
   const agendamentoPreview = useMemo<Agendamento | null>(() => {
     if (!clienteSelecionado || !dataSelecionada || !horaSelecionada || !produtoSelecionado) return null
+    
+    // Se o cliente não tem email, verificar se o email temporário foi preenchido
+    if (!clienteSelecionado.email && !emailTemporario) return null
+    
     const dataIso = dataSelecionada.toISOString().split('T')[0]
     return {
       id: Date.now().toString(),
@@ -164,7 +169,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       duracaoMinutos,
       status: 'agendado',
     }
-  }, [clienteSelecionado, dataSelecionada, horaSelecionada, produtoSelecionado, duracaoMinutos])
+  }, [clienteSelecionado, dataSelecionada, horaSelecionada, produtoSelecionado, duracaoMinutos, emailTemporario])
 
   // Fechar a lista de clientes ao clicar fora
   useEffect(() => {
@@ -226,6 +231,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     setMostrarListaClientes(false)
     setShowNovoCliente(false)
     setSearchCliente('')
+    setEmailTemporario('')
   }
 
   const calcularHoraFim = (horaInicio: string, duracao: number) => {
@@ -291,6 +297,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const handleFinalizarAgendamento = async () => {
     if (!agendamentoPreview) return
 
+    // Usar email temporário se o cliente não tiver email
+    const emailFinal = agendamentoPreview.cliente.email || emailTemporario
+
     const resumoTexto = `Oi ${agendamentoPreview.cliente.nome}! Seu agendamento está marcado para ${agendamentoPreview.data} às ${agendamentoPreview.hora} (${agendamentoPreview.duracaoMinutos} min) - ${agendamentoPreview.produto.nome}.`
     let finalPaymentLink = `https://pay.example.com/${agendamentoPreview.id}`
 
@@ -311,7 +320,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     // Monta payload esperado pelo backend
     const payload = {
       nome: agendamentoPreview.cliente.nome,
-      email: agendamentoPreview.cliente.email,
+      email: emailFinal,
       telefone: agendamentoPreview.cliente.telefone,
       data_hora: `${agendamentoPreview.data}T${agendamentoPreview.hora}:00`,
       produto_id: agendamentoPreview.produto.id,
@@ -370,6 +379,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       setProdutoSelecionado(null)
       setClienteSelecionado(null)
       setDuracaoMinutos(60)
+      setEmailTemporario('')
       setPasso('calendario')
     }
   }
@@ -617,7 +627,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     <input
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
                       placeholder="E-mail"
-                      value={novoCliente.email}
+                      value={novoCliente.email || ''}
                       onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
                     />
                     <input
@@ -705,20 +715,51 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
               {/* Lead */}
               {clienteSelecionado && (
-                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lead</p>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
+                <>
+                  <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lead</p>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
+                      {clienteSelecionado.email ? (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
+                      ) : (
+                        <p className="text-sm text-red-600 dark:text-red-400 mt-1 italic">E-mail não informado</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleRemoverCliente}
+                      className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                      aria-label="Remover lead"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={handleRemoverCliente}
-                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                    aria-label="Remover lead"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+
+                  {/* Campo de Email quando não informado */}
+                  {!clienteSelecionado.email && (
+                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700">
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-2">
+                        E-mail do Lead <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={emailTemporario}
+                        onChange={(e) => setEmailTemporario(e.target.value)}
+                        placeholder="email@exemplo.com"
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 ${
+                          !emailTemporario
+                            ? 'border-red-500 dark:border-red-500 focus:ring-red-500 ring-2 ring-red-200 dark:ring-red-500/30'
+                            : 'border-gray-300 dark:border-neutral-600 focus:ring-emerald-500'
+                        }`}
+                      />
+                      {!emailTemporario && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                          ⚠️ Preencha o e-mail do lead para continuar
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
 
