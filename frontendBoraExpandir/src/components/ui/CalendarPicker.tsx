@@ -6,6 +6,7 @@ interface CalendarPickerProps {
   onDateSelect: (date: Date) => void
   selectedDate?: Date
   disabledDates?: Date[]
+  disablePastDates?: boolean
 }
 
 const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
@@ -13,7 +14,8 @@ const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
 export function CalendarPicker({ 
   onDateSelect, 
   selectedDate,
-  disabledDates = [] 
+  disabledDates = [],
+  disablePastDates = false
 }: CalendarPickerProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
@@ -52,8 +54,26 @@ export function CalendarPicker({
     onDateSelect(date)
   }
 
+  const isPastDate = (day: number) => {
+    if (!disablePastDates) return false
+    
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+    const today = new Date()
+    
+    // Zerar as horas para comparar apenas a data
+    date.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+    
+    return date < today
+  }
+
   const isDateDisabled = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+    
+    // Verificar se é uma data passada
+    if (isPastDate(day)) return true
+    
+    // Verificar se está na lista de datas desabilitadas
     return disabledDates.some(
       disabledDate =>
         disabledDate.getDate() === date.getDate() &&

@@ -138,7 +138,7 @@ export default function RequerimentoSuperadmin({ onClose, onSave }: Requerimento
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               <Send className="h-4 w-4" />
               {loading ? 'Enviando...' : 'Enviar Requerimento'}

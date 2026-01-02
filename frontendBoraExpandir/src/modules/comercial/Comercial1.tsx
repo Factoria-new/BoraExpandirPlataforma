@@ -490,6 +490,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 onDateSelect={handleSelecionarData}
                 selectedDate={dataSelecionada || undefined}
                 disabledDates={[]}
+                disablePastDates={true}
               />
             )}
 

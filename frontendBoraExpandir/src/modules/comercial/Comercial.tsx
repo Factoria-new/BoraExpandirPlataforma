@@ -5,7 +5,6 @@ import type { SidebarGroup } from '../../components/ui/Sidebar'
 import DashboardVendas from './DashboardVendas'
 import CadastroCliente from './CadastroCliente'
 import GeracaoContratoNovo from './GeracaoContratoNovo'
-import GeracaoLinkPagamento from './GeracaoLinkPagamento'
 import RequerimentoSuperadmin from './RequerimentoSuperadmin'
 import AssinaturaDigital from './AssinaturaDigital'
 import Comercial1 from './Comercial1'
@@ -23,8 +22,6 @@ import type {
   ClienteFormData, 
   Contrato, 
   ContratoFormData,
-  LinkPagamento,
-  LinkPagamentoFormData,
   Requerimento,
   RequerimentoFormData,
   Lead,
@@ -40,7 +37,6 @@ import { Badge } from '../../components/ui/Badge'
 function DashboardPage({ 
   clientes, 
   contratos, 
-  linksPagamento, 
   requerimentos,
   agendamentos,
   onShowCadastroCliente,
@@ -49,7 +45,6 @@ function DashboardPage({
 }: {
   clientes: Cliente[]
   contratos: Contrato[]
-  linksPagamento: LinkPagamento[]
   requerimentos: Requerimento[]
   agendamentos: Agendamento[]
   onShowCadastroCliente: () => void
@@ -61,7 +56,7 @@ function DashboardPage({
       <h1 className="text-3xl font-bold text-dark dark:text-white mb-2">Dashboard Comercial</h1>
       <p className="text-gray-600 dark:text-gray-400 mb-8">Visão geral das atividades comerciais</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Clientes</h3>
@@ -84,15 +79,6 @@ function DashboardPage({
           </p>
         </div>
 
-        <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Links de Pagamento</h3>
-            <div className="p-2 bg-purple-50 dark:bg-purple-500/10 rounded-lg">
-              <CreditCard className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white">{linksPagamento.length}</p>
-        </div>
 
         <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-2">
@@ -343,80 +329,6 @@ function ContratosPage({
   )
 }
 
-function PagamentosPage({ 
-  linksPagamento, 
-  onShowGeracaoLinkPagamento 
-}: { 
-  linksPagamento: LinkPagamento[]
-  onShowGeracaoLinkPagamento: () => void
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Links de Pagamento</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gerencie links de pagamento gerados</p>
-        </div>
-        <button
-          onClick={onShowGeracaoLinkPagamento}
-          className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
-        >
-          <Plus className="h-5 w-5" />
-          Novo Link
-        </button>
-      </div>
-
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
-        {linksPagamento.length === 0 ? (
-          <div className="p-12 text-center">
-            <CreditCard className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Nenhum link de pagamento criado ainda</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-neutral-700">
-            {linksPagamento.map(link => (
-              <div key={link.id} className="p-6 hover:bg-gray-50 dark:hover:bg-neutral-700">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{link.descricao}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{link.contrato?.titulo}</p>
-                    <div className="flex items-center gap-4 text-sm mb-3">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Valor: <strong className="text-gray-900 dark:text-white">R$ {link.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                      </span>
-                      <Badge variant={
-                        link.status === 'pago' ? 'success' :
-                        link.status === 'ativo' ? 'default' :
-                        link.status === 'expirado' ? 'secondary' :
-                        'destructive'
-                      }>
-                        {link.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={link.link}
-                        readOnly
-                        className="flex-1 text-sm px-3 py-2 bg-gray-50 dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-lg text-gray-900 dark:text-white"
-                      />
-                      <button
-                        onClick={() => navigator.clipboard.writeText(link.link)}
-                        className="px-3 py-2 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 rounded-lg text-sm font-medium transition-colors text-gray-900 dark:text-white"
-                      >
-                        Copiar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function RequerimentosPage({ 
   requerimentos, 
@@ -434,25 +346,28 @@ function RequerimentosPage({
         </div>
         <button
           onClick={onShowRequerimento}
-          className="px-4 py-2.5 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors flex items-center gap-2"
+          className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
         >
           <Plus className="h-5 w-5" />
           Novo Requerimento
         </button>
       </div>
 
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
-        {requerimentos.length === 0 ? (
-          <div className="p-12 text-center">
-            <AlertCircle className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Nenhum requerimento enviado ainda</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-neutral-700">
-            {requerimentos.map(req => (
-              <div key={req.id} className="p-6 hover:bg-gray-50 dark:hover:bg-neutral-700">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">{req.titulo}</h3>
+      {requerimentos.length === 0 ? (
+        <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-12 text-center">
+          <AlertCircle className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Nenhum requerimento enviado ainda</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {requerimentos.map(req => (
+            <div 
+              key={req.id} 
+              className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 hover:shadow-md transition-shadow flex flex-col"
+            >
+              {/* Header com Badge */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
                   <Badge variant={
                     req.status === 'aprovado' ? 'success' :
                     req.status === 'pendente' ? 'warning' :
@@ -461,19 +376,63 @@ function RequerimentosPage({
                     {req.status}
                   </Badge>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{req.descricao}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500">Tipo: {req.tipo}</p>
-                {req.resposta_admin && (
-                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                    <p className="text-xs font-medium text-blue-900 dark:text-blue-300 mb-1">Resposta do Admin:</p>
-                    <p className="text-sm text-blue-800 dark:text-blue-200">{req.resposta_admin}</p>
-                  </div>
-                )}
+                <div className={`p-2 rounded-lg ${
+                  req.tipo === 'aprovacao_contrato' ? 'bg-blue-50 dark:bg-blue-500/10' :
+                  req.tipo === 'ajuste_valor' ? 'bg-purple-50 dark:bg-purple-500/10' :
+                  req.tipo === 'cancelamento' ? 'bg-red-50 dark:bg-red-500/10' :
+                  'bg-gray-50 dark:bg-gray-500/10'
+                }`}>
+                  <AlertCircle className={`h-5 w-5 ${
+                    req.tipo === 'aprovacao_contrato' ? 'text-blue-600 dark:text-blue-400' :
+                    req.tipo === 'ajuste_valor' ? 'text-purple-600 dark:text-purple-400' :
+                    req.tipo === 'cancelamento' ? 'text-red-600 dark:text-red-400' :
+                    'text-gray-600 dark:text-gray-400'
+                  }`} />
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* Título */}
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                {req.titulo}
+              </h3>
+
+              {/* Tipo */}
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-3 uppercase tracking-wide">
+                {req.tipo.replace(/_/g, ' ')}
+              </p>
+
+              {/* Descrição */}
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3 flex-1">
+                {req.descricao}
+              </p>
+
+              {/* Resposta do Admin */}
+              {req.resposta_admin && (
+                <div className="mt-auto p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-100 dark:border-blue-500/20">
+                  <p className="text-xs font-medium text-blue-900 dark:text-blue-300 mb-1 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Resposta do Admin:
+                  </p>
+                  <p className="text-xs text-blue-800 dark:text-blue-200 line-clamp-2">
+                    {req.resposta_admin}
+                  </p>
+                </div>
+              )}
+
+              {/* Data */}
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-neutral-700">
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  {new Date(req.created_at).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -483,7 +442,6 @@ export default function Comercial() {
   // Modals
   const [showCadastroCliente, setShowCadastroCliente] = useState(false)
   const [showGeracaoContrato, setShowGeracaoContrato] = useState(false)
-  const [showGeracaoLinkPagamento, setShowGeracaoLinkPagamento] = useState(false)
   const [showRequerimento, setShowRequerimento] = useState(false)
   const [contratoParaAssinar, setContratoParaAssinar] = useState<Contrato | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -547,8 +505,61 @@ export default function Comercial() {
     },
   ])
   const [contratos, setContratos] = useState<Contrato[]>([])
-  const [linksPagamento, setLinksPagamento] = useState<LinkPagamento[]>([])
-  const [requerimentos, setRequerimentos] = useState<Requerimento[]>([])
+  const [requerimentos, setRequerimentos] = useState<Requerimento[]>([
+    {
+      id: '1',
+      tipo: 'aprovacao_contrato',
+      titulo: 'Aprovação de desconto de 20% para cliente estratégico',
+      descricao: 'Cliente ABC Ltda está solicitando desconto de 20% no pacote Premium devido ao volume de contratos. Histórico de pagamentos em dia e potencial de expansão para outros serviços.',
+      comercial_usuario_id: 'usuario-1',
+      status: 'pendente',
+      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: '2',
+      tipo: 'ajuste_valor',
+      titulo: 'Ajuste de valor para renovação de contrato',
+      descricao: 'Cliente XYZ solicitou reajuste de 15% no valor do contrato devido a mudanças no escopo. Necessário aprovação para prosseguir com a renovação.',
+      comercial_usuario_id: 'usuario-1',
+      status: 'aprovado',
+      resposta_admin: 'Aprovado. Pode prosseguir com o ajuste conforme solicitado. Documentar todas as mudanças no escopo.',
+      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: '3',
+      tipo: 'cancelamento',
+      titulo: 'Cancelamento de contrato - Cliente inadimplente',
+      descricao: 'Cliente DEF está com 3 meses de inadimplência. Tentativas de contato foram realizadas sem sucesso. Solicitando autorização para cancelamento e cobrança judicial.',
+      comercial_usuario_id: 'usuario-1',
+      status: 'rejeitado',
+      resposta_admin: 'Antes de cancelar, realizar mais uma tentativa de negociação com desconto de juros. Se não houver resposta em 7 dias, pode prosseguir com o cancelamento.',
+      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: '4',
+      tipo: 'outro',
+      titulo: 'Solicitação de extensão de prazo para entrega',
+      descricao: 'Cliente solicitou extensão de 15 dias no prazo de entrega do projeto devido a atrasos internos. Não há impacto financeiro, apenas ajuste de cronograma.',
+      comercial_usuario_id: 'usuario-1',
+      status: 'aprovado',
+      resposta_admin: 'Aprovado. Formalizar a extensão por escrito e atualizar o cronograma no sistema.',
+      created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: '5',
+      tipo: 'aprovacao_contrato',
+      titulo: 'Aprovação de condições especiais de pagamento',
+      descricao: 'Cliente GHI solicitou parcelamento em 12x sem juros para contrato de R$ 50.000. Cliente tem bom histórico e potencial de indicações.',
+      comercial_usuario_id: 'usuario-1',
+      status: 'pendente',
+      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ])
   const [leads, setLeads] = useState<Lead[]>([])
   
   // Mock agendamentos
@@ -681,18 +692,6 @@ export default function Comercial() {
     setContratos(prev => [...prev, novoContrato])
   }
 
-  const handleSaveLinkPagamento = async (linkData: LinkPagamentoFormData) => {
-    // TODO: Integrar com backend
-    const novoLink: LinkPagamento = {
-      id: Math.random().toString(36).substring(7),
-      ...linkData,
-      link: `https://pay.boraexpandir.com/${Math.random().toString(36).substring(7)}`,
-      status: 'ativo',
-      contrato: contratos.find(c => c.id === linkData.contrato_id),
-      created_at: new Date().toISOString(),
-    }
-    setLinksPagamento(prev => [...prev, novoLink])
-  }
 
   const handleSaveRequerimento = async (reqData: RequerimentoFormData) => {
     // TODO: Integrar com backend
@@ -743,7 +742,6 @@ export default function Comercial() {
         { label: 'Leads', to: '/comercial/leads', icon: Users },
         { label: 'Ganhos', to: '/comercial/ganhos', icon: DollarSign },
         { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
-        { label: 'Pagamentos', to: '/comercial/pagamentos', icon: CreditCard },
         { label: 'Requerimentos', to: '/comercial/requerimentos', icon: AlertCircle },
         { label: 'Configurações', to: '/comercial/configuracoes', icon: Settings },
       ],
@@ -783,7 +781,6 @@ export default function Comercial() {
               <DashboardPage 
                 clientes={clientes}
                 contratos={contratos}
-                linksPagamento={linksPagamento}
                 requerimentos={requerimentos}
                 agendamentos={agendamentos}
                 onShowCadastroCliente={() => setShowCadastroCliente(true)}
@@ -829,15 +826,6 @@ export default function Comercial() {
             } 
           />
           <Route 
-            path="/pagamentos" 
-            element={
-              <PagamentosPage 
-                linksPagamento={linksPagamento}
-                onShowGeracaoLinkPagamento={() => setShowGeracaoLinkPagamento(true)}
-              />
-            } 
-          />
-          <Route 
             path="/requerimentos" 
             element={
               <RequerimentosPage 
@@ -870,13 +858,6 @@ export default function Comercial() {
         />
       )}
 
-      {showGeracaoLinkPagamento && (
-        <GeracaoLinkPagamento
-          onClose={() => setShowGeracaoLinkPagamento(false)}
-          onSave={handleSaveLinkPagamento}
-          contratos={contratos}
-        />
-      )}
 
       {showRequerimento && (
         <RequerimentoSuperadmin
