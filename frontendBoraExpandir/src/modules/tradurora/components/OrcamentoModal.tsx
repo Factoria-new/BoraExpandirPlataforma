@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
-import { X, FileText, Calendar, DollarSign, Send } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { X, FileText, Calendar, DollarSign, Send, Info } from 'lucide-react'
 import type { OrcamentoItem, OrcamentoFormData } from '../types/orcamento'
 import { Badge } from '../../../components/ui/Badge'
+import { calcularValorComMarkup, getMarkupPercentual, getDataPrazoPadrao } from '../../../services/comissaoService'
 
 interface OrcamentoModalProps {
   orcamento: OrcamentoItem | null
@@ -9,19 +10,75 @@ interface OrcamentoModalProps {
   onSubmit: (orcamentoId: string, dados: OrcamentoFormData) => void
 }
 
+// Converte data de yyyy-mm-dd para dd/mm/yyyy
+const formatarDataBR = (dataISO: string): string => {
+  if (!dataISO) return ''
+  const [ano, mes, dia] = dataISO.split('-')
+  return `${dia}/${mes}/${ano}`
+}
+
+// Converte data de dd/mm/yyyy para yyyy-mm-dd
+const parseDataBR = (dataBR: string): string => {
+  if (!dataBR || dataBR.length !== 10) return ''
+  const [dia, mes, ano] = dataBR.split('/')
+  if (!dia || !mes || !ano) return ''
+  return `${ano}-${mes}-${dia}`
+}
+
+// Aplica máscara dd/mm/yyyy enquanto digita
+const aplicarMascaraData = (valor: string): string => {
+  // Remove tudo que não é número
+  let numeros = valor.replace(/\D/g, '')
+  
+  // Limita a 8 caracteres (ddmmyyyy)
+  numeros = numeros.slice(0, 8)
+  
+  // Aplica máscara
+  if (numeros.length >= 5) {
+    return `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}/${numeros.slice(4)}`
+  } else if (numeros.length >= 3) {
+    return `${numeros.slice(0, 2)}/${numeros.slice(2)}`
+  }
+  return numeros
+}
+
 export default function OrcamentoModal({ orcamento, onClose, onSubmit }: OrcamentoModalProps) {
+  // Inicializa prazo com 5 dias à frente como padrão (formato ISO internamente)
   const [formData, setFormData] = useState<OrcamentoFormData>({
     valorOrcamento: 0,
-    prazoEntrega: '',
+    prazoEntrega: getDataPrazoPadrao(5), // Prazo padrão: 5 dias à frente (yyyy-mm-dd)
     observacoes: '',
   })
+  
+  // Estado para exibição da data no formato brasileiro
+  const [prazoDisplay, setPrazoDisplay] = useState(() => formatarDataBR(getDataPrazoPadrao(5)))
   const [submitting, setSubmitting] = useState(false)
+
+  // Calcula valor com markup da plataforma
+  const valorComMarkup = useMemo(() => {
+    if (formData.valorOrcamento > 0) {
+      return calcularValorComMarkup(formData.valorOrcamento)
+    }
+    return null
+  }, [formData.valorOrcamento])
 
   if (!orcamento) return null
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: name === 'valorOrcamento' ? parseFloat(value) || 0 : value }))
+  }
+
+  // Handler especial para o campo de data
+  const handleDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valorMascarado = aplicarMascaraData(e.target.value)
+    setPrazoDisplay(valorMascarado)
+    
+    // Se tiver 10 caracteres (dd/mm/yyyy), converte para ISO
+    if (valorMascarado.length === 10) {
+      const dataISO = parseDataBR(valorMascarado)
+      setFormData(prev => ({ ...prev, prazoEntrega: dataISO }))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,7 +169,7 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <DollarSign className="h-4 w-4" />
-                Valor do Orçamento (R$)
+                Seu Valor (R$)
               </label>
               <input
                 type="number"
@@ -122,9 +179,44 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
                 required
                 min="0"
                 step="0.01"
-                placeholder="0.00"
+                placeholder="Digite o valor que você irá receber"
                 className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              
+              {/* Legenda com valor final ao cliente */}
+              {valorComMarkup && (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                        Valor para o cliente (com markup de {valorComMarkup.percentualMarkup}%)
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-amber-700 dark:text-amber-400">Seu valor:</span>
+                          <span className="font-medium text-amber-900 dark:text-amber-200">
+                            R$ {valorComMarkup.valorTradutor.toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-amber-700 dark:text-amber-400">+ Markup da plataforma:</span>
+                          <span className="font-medium text-amber-900 dark:text-amber-200">
+                            R$ {valorComMarkup.valorMarkup.toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+                        <div className="h-px bg-amber-200 dark:bg-amber-500/30 my-1" />
+                        <div className="flex justify-between">
+                          <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Valor final ao cliente:</span>
+                          <span className="text-lg font-bold text-amber-900 dark:text-amber-100">
+                            R$ {valorComMarkup.valorFinalCliente.toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -133,14 +225,18 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
                 Prazo de Entrega
               </label>
               <input
-                type="date"
+                type="text"
                 name="prazoEntrega"
-                value={formData.prazoEntrega}
-                onChange={handleChange}
+                value={prazoDisplay}
+                onChange={handleDataChange}
                 required
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="dd/mm/yyyy"
+                maxLength={10}
+                className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Formato: dd/mm/yyyy
+              </p>
             </div>
 
             <div>

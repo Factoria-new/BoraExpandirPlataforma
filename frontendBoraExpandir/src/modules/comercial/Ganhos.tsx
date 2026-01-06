@@ -1,20 +1,23 @@
 import { useMemo, useState } from 'react'
-import { DollarSign, TrendingUp, Calendar, Award, Filter, X } from 'lucide-react'
+import { DollarSign, TrendingUp, Calendar, Award, Filter, X, User, Bot } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
 import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
+import { calcularComissao, getLabelOrigem, type OrigemVenda } from '../../services/comissaoService'
 
 // Mock data - substituir por dados reais do backend
 // Dados distribuídos nos últimos 6 meses para testar filtros
-const mockComissoes = [
+// O campo origem_venda determina o percentual de comissão:
+// - 'propria': venda prospectada pelo funcionário = 12%
+// - 'bot': venda que veio do bot e foi concluída = 8%
+const mockVendas = [
   // Mês atual
   {
     id: '1',
     cliente_nome: 'João Silva',
     servico: 'Consultoria Jurídica - Contrato Comercial',
     valor_servico: 5000.00,
-    percentual_comissao: 10,
-    valor_comissao: 500.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -25,8 +28,7 @@ const mockComissoes = [
     cliente_nome: 'Maria Santos',
     servico: 'Parecer Jurídico - Propriedade Intelectual',
     valor_servico: 3500.00,
-    percentual_comissao: 10,
-    valor_comissao: 350.00,
+    origem_venda: 'bot' as OrigemVenda,
     status: 'pendente',
     data_venda: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: null,
@@ -37,8 +39,7 @@ const mockComissoes = [
     cliente_nome: 'Carlos Oliveira',
     servico: 'Assessoria Contratual - M&A',
     valor_servico: 15000.00,
-    percentual_comissao: 12,
-    valor_comissao: 1800.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -49,8 +50,7 @@ const mockComissoes = [
     cliente_nome: 'Ana Costa',
     servico: 'Consultoria - Direito Trabalhista',
     valor_servico: 4000.00,
-    percentual_comissao: 10,
-    valor_comissao: 400.00,
+    origem_venda: 'bot' as OrigemVenda,
     status: 'processando',
     data_venda: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: null,
@@ -61,8 +61,7 @@ const mockComissoes = [
     cliente_nome: 'Pedro Almeida',
     servico: 'Análise de Conformidade - LGPD',
     valor_servico: 6000.00,
-    percentual_comissao: 10,
-    valor_comissao: 600.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
@@ -74,8 +73,7 @@ const mockComissoes = [
     cliente_nome: 'Fernanda Lima',
     servico: 'Contrato de Prestação de Serviços',
     valor_servico: 7500.00,
-    percentual_comissao: 10,
-    valor_comissao: 750.00,
+    origem_venda: 'bot' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -86,8 +84,7 @@ const mockComissoes = [
     cliente_nome: 'Roberto Souza',
     servico: 'Consultoria Empresarial',
     valor_servico: 8000.00,
-    percentual_comissao: 12,
-    valor_comissao: 960.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
@@ -98,8 +95,7 @@ const mockComissoes = [
     cliente_nome: 'Juliana Martins',
     servico: 'Revisão Contratual',
     valor_servico: 2500.00,
-    percentual_comissao: 10,
-    valor_comissao: 250.00,
+    origem_venda: 'bot' as OrigemVenda,
     status: 'cancelado',
     data_venda: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: null,
@@ -111,8 +107,7 @@ const mockComissoes = [
     cliente_nome: 'Marcos Pereira',
     servico: 'Assessoria Jurídica - Licitações',
     valor_servico: 12000.00,
-    percentual_comissao: 15,
-    valor_comissao: 1800.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
@@ -123,8 +118,7 @@ const mockComissoes = [
     cliente_nome: 'Luciana Rodrigues',
     servico: 'Consultoria Tributária',
     valor_servico: 9000.00,
-    percentual_comissao: 10,
-    valor_comissao: 900.00,
+    origem_venda: 'bot' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000).toISOString(),
@@ -135,8 +129,7 @@ const mockComissoes = [
     cliente_nome: 'Ricardo Gomes',
     servico: 'Due Diligence',
     valor_servico: 18000.00,
-    percentual_comissao: 12,
-    valor_comissao: 2160.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString(),
@@ -148,8 +141,7 @@ const mockComissoes = [
     cliente_nome: 'Beatriz Fernandes',
     servico: 'Contrato de Locação Comercial',
     valor_servico: 3000.00,
-    percentual_comissao: 10,
-    valor_comissao: 300.00,
+    origem_venda: 'bot' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 115 * 24 * 60 * 60 * 1000).toISOString(),
@@ -160,8 +152,7 @@ const mockComissoes = [
     cliente_nome: 'Gustavo Alves',
     servico: 'Consultoria em Compliance',
     valor_servico: 10000.00,
-    percentual_comissao: 12,
-    valor_comissao: 1200.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 130 * 24 * 60 * 60 * 1000).toISOString(),
@@ -172,8 +163,7 @@ const mockComissoes = [
     cliente_nome: 'Patricia Mendes',
     servico: 'Assessoria em Fusões',
     valor_servico: 25000.00,
-    percentual_comissao: 15,
-    valor_comissao: 3750.00,
+    origem_venda: 'propria' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000).toISOString(),
@@ -185,8 +175,7 @@ const mockComissoes = [
     cliente_nome: 'Eduardo Santos',
     servico: 'Consultoria Jurídica - Startups',
     valor_servico: 5500.00,
-    percentual_comissao: 10,
-    valor_comissao: 550.00,
+    origem_venda: 'bot' as OrigemVenda,
     status: 'pago',
     data_venda: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000).toISOString(),
     data_pagamento: new Date(Date.now() - 165 * 24 * 60 * 60 * 1000).toISOString(),
@@ -214,13 +203,26 @@ export default function Ganhos() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [showFilters, setShowFilters] = useState(false)
 
+  // Transforma vendas em comissões calculadas automaticamente
+  const comissoesComCalculo = useMemo(() => {
+    return mockVendas.map(venda => {
+      const { percentual, valorComissao } = calcularComissao(venda.valor_servico, venda.origem_venda)
+      return {
+        ...venda,
+        percentual_comissao: percentual,
+        valor_comissao: valorComissao,
+        origem_label: getLabelOrigem(venda.origem_venda)
+      }
+    })
+  }, [])
+
   const filteredComissoes = useMemo(() => {
     // Filter by time range
-    let filtered = filterByTimeRange(mockComissoes, timeRange)
+    let filtered = filterByTimeRange(comissoesComCalculo, timeRange)
 
     // Sort
     return sortData(filtered, sortBy, sortDirection)
-  }, [timeRange, sortBy, sortDirection])
+  }, [comissoesComCalculo, timeRange, sortBy, sortDirection])
 
   const handleSortChange = (newSortBy: string, newDirection: SortDirection) => {
     setSortBy(newSortBy)
@@ -371,6 +373,9 @@ export default function Ganhos() {
                   Serviço
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Origem
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Valor Venda
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -394,6 +399,22 @@ export default function Ganhos() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                       {comissao.servico}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {comissao.origem_venda === 'propria' ? (
+                          <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        )}
+                        <span className={`text-sm font-medium ${
+                          comissao.origem_venda === 'propria' 
+                            ? 'text-emerald-600 dark:text-emerald-400' 
+                            : 'text-blue-600 dark:text-blue-400'
+                        }`}>
+                          {comissao.origem_label}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
                       R$ {comissao.valor_servico.toFixed(2)}
@@ -423,7 +444,7 @@ export default function Ganhos() {
       {/* Contador */}
       {filteredComissoes.length > 0 && (
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Exibindo {filteredComissoes.length} de {mockComissoes.length} comissões
+          Exibindo {filteredComissoes.length} de {mockVendas.length} comissões
         </div>
       )}
     </div>

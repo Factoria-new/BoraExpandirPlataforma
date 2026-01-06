@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FolderCog, FileText, CheckCircle2, Settings, Gauge, PieChart, Wallet, HandCoins, BarChart, Home, FolderOpen, FileSearch, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Users, FolderCog, FileText, CheckCircle2, Settings, Gauge, PieChart, Wallet, HandCoins, BarChart, Home, FolderOpen, FileSearch, CheckSquare, Languages, CreditCard } from "lucide-react";
 import type { SidebarGroup } from "@/components/ui/Sidebar";
 
 export const admSidebarGroups: SidebarGroup[] = [
@@ -7,6 +7,7 @@ export const admSidebarGroups: SidebarGroup[] = [
     items: [
       { label: "Dashboard", to: "/adm", icon: LayoutDashboard },
       { label: "Gestão de Equipe", to: "/adm/team", icon: Users },
+      { label: "Meus Tradutores", to: "/adm/tradutores", icon: Languages },
       { label: "Catálogo de Serviços", to: "/adm/services", icon: FolderCog },
     ],
   },
@@ -16,6 +17,7 @@ export const admSidebarGroups: SidebarGroup[] = [
       { label: "Visão Geral", to: "/adm/financeiro/visao-geral", icon: PieChart },
       { label: "Contas a Receber", to: "/adm/financeiro/contas-receber", icon: Wallet },
       { label: "Comissões", to: "/adm/financeiro/comissoes", icon: HandCoins },
+      { label: "Pagamentos", to: "/adm/financeiro/pagamentos", icon: CreditCard },
       { label: "Relatórios", to: "/adm/financeiro/relatorios", icon: BarChart },
     ],
   },

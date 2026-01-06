@@ -6,6 +6,8 @@ import ServiceCatalog from "./pages/admin/ServiceCatalog";
 import AuditLogs from "./pages/admin/AuditLogs";
 import CockpitDoDoNo from "./pages/admin/CockpitDoDoNo";
 import AuditoriaAprovacoes from "./pages/admin/AuditoriaAprovacoes";
+import GestaoTradutores from "./pages/admin/GestaoTradutores";
+import PagamentosAdmin from "./pages/admin/PagamentosAdmin";
 import { Config } from "../../components/ui/Config";
 
 // Importar componentes financeiros
@@ -80,6 +82,7 @@ const App = () => (
       <Route index element={<Dashboard />} />
       <Route path="team" element={<UserManagement />} />
       <Route path="services" element={<ServiceCatalog />} />
+      <Route path="tradutores" element={<GestaoTradutores />} />
       <Route path="audit" element={<AuditLogs />} />
       <Route path="cockpit" element={<CockpitDoDoNo />} />
       <Route path="approvals" element={<AuditoriaAprovacoes />} />
@@ -88,6 +91,7 @@ const App = () => (
       <Route path="financeiro/visao-geral" element={<FinancialDashboard />} />
       <Route path="financeiro/contas-receber" element={<FinancialProcessList />} />
       <Route path="financeiro/comissoes" element={<Comissoes />} />
+      <Route path="financeiro/pagamentos" element={<PagamentosAdmin />} />
       <Route path="financeiro/relatorios" element={<Relatorios />} />
       
       {/* Rotas Jurídicas */}
