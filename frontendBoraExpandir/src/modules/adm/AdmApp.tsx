@@ -36,7 +36,6 @@ const mockJuridicoData: ProcessData[] = [
     prazoResposta: 0,
     observacao: "0",
     valorAcao: "1,00 €",
-    responsavel: "Fernanda Borg..."
   },
   {
     id: "2",
@@ -50,7 +49,6 @@ const mockJuridicoData: ProcessData[] = [
     prazoResposta: 15,
     observacao: "Aguardando documentação",
     valorAcao: "500,00 €",
-    responsavel: "Carlos Lima"
   }
 ];
 

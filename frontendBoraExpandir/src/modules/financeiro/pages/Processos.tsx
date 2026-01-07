@@ -16,7 +16,6 @@ const mockFinanceiroData: ProcessData[] = [
         prazoResposta: 5,
         observacao: "Cobrança enviada",
         valorAcao: "1.500,00 €",
-        responsavel: "Ana Souza"
     }
 ];
 

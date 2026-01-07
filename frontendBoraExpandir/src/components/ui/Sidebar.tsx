@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NotificationsDropdown } from './NotificationsDropdown'
 
 export type SidebarItem = {
   label: string
@@ -144,12 +145,15 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
             alt="BoraExpandir"
             className="h-14 w-auto max-w-full"
           />
-          <button
-            onClick={() => setOpen(false)}
-            className="md:hidden p-1 rounded hover:bg-sidebar-accent transition"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationsDropdown />
+            <button
+              onClick={() => setOpen(false)}
+              className="md:hidden p-1 rounded hover:bg-sidebar-accent transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="text-xs text-muted-foreground truncate">{userName}</div>
       </div>

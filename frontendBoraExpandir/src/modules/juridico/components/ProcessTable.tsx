@@ -26,7 +26,6 @@ export interface ProcessData {
     prazoResposta?: number;
     observacao?: string;
     valorAcao: string;
-    responsavel: string;
 }
 
 interface ProcessTableProps {
@@ -73,7 +72,6 @@ export function ProcessTable({ data, onRowClick }: ProcessTableProps) {
                                 <TableHead>Prazo para Resposta</TableHead>
                                 <TableHead>Observação</TableHead>
                                 <TableHead>Valor da Ação</TableHead>
-                                <TableHead>Responsável</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -104,12 +102,11 @@ export function ProcessTable({ data, onRowClick }: ProcessTableProps) {
                                     </TableCell>
                                     <TableCell>{row.observacao || '0'}</TableCell>
                                     <TableCell>{row.valorAcao}</TableCell>
-                                    <TableCell>{row.responsavel}</TableCell>
                                 </TableRow>
                             ))}
                             {data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
+                                    <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
                                         Nenhum processo encontrado.
                                     </TableCell>
                                 </TableRow>

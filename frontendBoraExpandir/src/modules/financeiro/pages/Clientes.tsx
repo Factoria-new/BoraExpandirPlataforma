@@ -175,7 +175,6 @@ const mockClientes: Cliente[] = [
 export function Clientes() {
     const [searchTerm, setSearchTerm] = useState("");
     const [clientes] = useState<Cliente[]>(mockClientes);
-
     const filteredClientes = clientes.filter(cliente =>
         cliente.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
         cliente.cpf.includes(searchTerm) ||

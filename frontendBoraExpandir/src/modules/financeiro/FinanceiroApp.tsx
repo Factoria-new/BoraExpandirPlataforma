@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   ClipboardList,
   CheckSquare,
-  ArrowRightLeft
+  ArrowRightLeft,
+  GitCompareArrows,
 } from 'lucide-react'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
@@ -28,6 +29,7 @@ import { Titularidades } from './pages/Titularidades'
 import { Processos } from './pages/Processos'
 import { Tarefas } from './pages/Tarefas'
 import { Movimentos } from './pages/Movimentos'
+import { RelatoriosComparativos } from './pages/RelatoriosComparativos'
 
 
 export function FinanceiroApp() {
@@ -56,6 +58,7 @@ export function FinanceiroApp() {
       label: 'Sistema',
       items: [
         { label: 'Relatórios', to: '/financeiro/relatorios', icon: BarChart },
+        { label: 'Comparativos', to: '/financeiro/comparativos', icon: GitCompareArrows },
         { label: 'Configurações', to: '/financeiro/configuracoes', icon: Settings },
       ],
     },
@@ -84,6 +87,7 @@ export function FinanceiroApp() {
 
           {/* System */}
           <Route path="relatorios" element={<Relatorios />} />
+          <Route path="comparativos" element={<RelatoriosComparativos />} />
           <Route path="configuracoes" element={<Config />} />
 
           <Route path="*" element={<Navigate to="." replace />} />
