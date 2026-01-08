@@ -11,6 +11,10 @@ import {
   Medal,
   Award,
   CheckCircle2,
+  Filter,
+  Briefcase,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 interface VendedorInfo {
@@ -19,44 +23,84 @@ interface VendedorInfo {
   meta: number
   comissao: number
   status: 'acima' | 'dentro' | 'abaixo'
+  servico: string
 }
 
-// Mock data
-const mockMetricas = {
-  metaVendas: {
-    atual: 45000,
-    total: 100000,
-    percentual: 45,
+// Tipos de serviço disponíveis
+const tiposServico = [
+  { value: 'todos', label: 'Todos os Serviços' },
+  { value: 'consultoria', label: 'Consultoria' },
+  { value: 'visto_d7', label: 'Visto D7' },
+  { value: 'cidadania_portuguesa', label: 'Cidadania Portuguesa' },
+  { value: 'cidadania_italiana', label: 'Cidadania Italiana' },
+  { value: 'green_card', label: 'Green Card' },
+  { value: 'visto_e2', label: 'Visto E-2' },
+]
+
+// Mock data com segmentação por serviço
+const mockMetricasPorServico = {
+  todos: {
+    metaVendas: { atual: 145000, total: 200000, percentual: 72.5 },
+    novosClientes: { mes: 42, mesAnterior: 35, crescimento: 20 },
+    faturamentoMensal: { valor: 287500, mesAnterior: 242000, crescimento: 18.8 },
+    contasReceber: { total: 456000, vencidas: 54000, proximasVencer: 85000 },
+    comissoes: { aRealizar: 28750, paga: 165200, total: 193950 },
   },
-  novosClientes: {
-    mes: 12,
-    mesAnterior: 8,
-    crescimento: 50,
+  consultoria: {
+    metaVendas: { atual: 25000, total: 40000, percentual: 62.5 },
+    novosClientes: { mes: 8, mesAnterior: 6, crescimento: 33.3 },
+    faturamentoMensal: { valor: 45000, mesAnterior: 38000, crescimento: 18.4 },
+    contasReceber: { total: 72000, vencidas: 8000, proximasVencer: 15000 },
+    comissoes: { aRealizar: 4500, paga: 28000, total: 32500 },
   },
-  faturamentoMensal: {
-    valor: 87500,
-    mesAnterior: 72000,
-    crescimento: 21.5,
+  visto_d7: {
+    metaVendas: { atual: 35000, total: 45000, percentual: 77.8 },
+    novosClientes: { mes: 12, mesAnterior: 10, crescimento: 20 },
+    faturamentoMensal: { valor: 68000, mesAnterior: 55000, crescimento: 23.6 },
+    contasReceber: { total: 98000, vencidas: 12000, proximasVencer: 22000 },
+    comissoes: { aRealizar: 6800, paga: 42000, total: 48800 },
   },
-  contasReceber: {
-    total: 156000,
-    vencidas: 24000,
-    proximasVencer: 45000,
+  cidadania_portuguesa: {
+    metaVendas: { atual: 28000, total: 35000, percentual: 80 },
+    novosClientes: { mes: 7, mesAnterior: 8, crescimento: -12.5 },
+    faturamentoMensal: { valor: 56000, mesAnterior: 62000, crescimento: -9.7 },
+    contasReceber: { total: 85000, vencidas: 15000, proximasVencer: 18000 },
+    comissoes: { aRealizar: 5600, paga: 32000, total: 37600 },
   },
-  comissoes: {
-    aRealizar: 8750,
-    paga: 65200,
-    total: 73950,
+  cidadania_italiana: {
+    metaVendas: { atual: 22000, total: 30000, percentual: 73.3 },
+    novosClientes: { mes: 6, mesAnterior: 4, crescimento: 50 },
+    faturamentoMensal: { valor: 42000, mesAnterior: 35000, crescimento: 20 },
+    contasReceber: { total: 65000, vencidas: 8000, proximasVencer: 12000 },
+    comissoes: { aRealizar: 4200, paga: 25000, total: 29200 },
   },
-  vendedores: [
-    { nome: 'João Silva', vendas: 28000, meta: 25000, comissao: 2800, status: 'acima' as const },
-    { nome: 'Maria Santos', vendas: 22000, meta: 25000, comissao: 1650, status: 'abaixo' as const },
-    { nome: 'Pedro Costa', vendas: 26500, meta: 25000, comissao: 2650, status: 'acima' as const },
-    { nome: 'Ana Oliveira', vendas: 11000, meta: 25000, comissao: 825, status: 'abaixo' as const },
-    { nome: 'Carlos Ferreira', vendas: 25000, meta: 25000, comissao: 2500, status: 'dentro' as const },
-    { nome: 'Lucia Mendes', vendas: 30000, meta: 25000, comissao: 3000, status: 'acima' as const },
-  ] as VendedorInfo[],
+  green_card: {
+    metaVendas: { atual: 18000, total: 25000, percentual: 72 },
+    novosClientes: { mes: 5, mesAnterior: 4, crescimento: 25 },
+    faturamentoMensal: { valor: 48000, mesAnterior: 32000, crescimento: 50 },
+    contasReceber: { total: 78000, vencidas: 6000, proximasVencer: 10000 },
+    comissoes: { aRealizar: 4800, paga: 22000, total: 26800 },
+  },
+  visto_e2: {
+    metaVendas: { atual: 17000, total: 25000, percentual: 68 },
+    novosClientes: { mes: 4, mesAnterior: 3, crescimento: 33.3 },
+    faturamentoMensal: { valor: 28500, mesAnterior: 20000, crescimento: 42.5 },
+    contasReceber: { total: 58000, vencidas: 5000, proximasVencer: 8000 },
+    comissoes: { aRealizar: 2850, paga: 16200, total: 19050 },
+  },
 }
+
+// Vendedores com serviço associado
+const mockVendedores: VendedorInfo[] = [
+  { nome: 'João Silva', vendas: 28000, meta: 25000, comissao: 2800, status: 'acima', servico: 'visto_d7' },
+  { nome: 'Maria Santos', vendas: 22000, meta: 25000, comissao: 1650, status: 'abaixo', servico: 'cidadania_portuguesa' },
+  { nome: 'Pedro Costa', vendas: 26500, meta: 25000, comissao: 2650, status: 'acima', servico: 'consultoria' },
+  { nome: 'Ana Oliveira', vendas: 11000, meta: 25000, comissao: 825, status: 'abaixo', servico: 'green_card' },
+  { nome: 'Carlos Ferreira', vendas: 25000, meta: 25000, comissao: 2500, status: 'dentro', servico: 'cidadania_italiana' },
+  { nome: 'Lucia Mendes', vendas: 30000, meta: 25000, comissao: 3000, status: 'acima', servico: 'visto_e2' },
+  { nome: 'Roberto Lima', vendas: 32000, meta: 25000, comissao: 3200, status: 'acima', servico: 'visto_d7' },
+  { nome: 'Fernanda Alves', vendas: 18000, meta: 25000, comissao: 1350, status: 'abaixo', servico: 'consultoria' },
+]
 
 const corPorStatus = {
   acima: 'bg-green-600',
@@ -85,11 +129,24 @@ const positionIcons = [
 
 export function Dashboard() {
   const [periodo, setPeriodo] = useState('mes')
+  const [servicoFiltro, setServicoFiltro] = useState('todos')
+  const [filtroAberto, setFiltroAberto] = useState(false)
+
+  // Métricas baseadas no filtro de serviço
+  const mockMetricas = useMemo(() => {
+    return mockMetricasPorServico[servicoFiltro as keyof typeof mockMetricasPorServico] || mockMetricasPorServico.todos
+  }, [servicoFiltro])
+
+  // Vendedores filtrados por serviço
+  const vendedoresFiltrados = useMemo(() => {
+    if (servicoFiltro === 'todos') return mockVendedores
+    return mockVendedores.filter(v => v.servico === servicoFiltro)
+  }, [servicoFiltro])
 
   // Cálculos
   const percentualMeta = useMemo(() => {
     return Math.round((mockMetricas.metaVendas.atual / mockMetricas.metaVendas.total) * 100)
-  }, [])
+  }, [mockMetricas])
 
   const faturamentoPorcentagem = useMemo(() => {
     return (
@@ -97,7 +154,7 @@ export function Dashboard() {
         mockMetricas.faturamentoMensal.mesAnterior) *
       100
     ).toFixed(1)
-  }, [])
+  }, [mockMetricas])
 
   const statusMeta = useMemo(() => {
     if (percentualMeta >= 100) return 'acima'
@@ -109,14 +166,14 @@ export function Dashboard() {
 
   // Ranking de vendedores ordenado por performance
   const vendedoresRanking = useMemo(() => {
-    return [...mockMetricas.vendedores]
+    return [...vendedoresFiltrados]
       .map(v => ({
         ...v,
         percentual: (v.vendas / v.meta) * 100,
         metaBatida: v.vendas >= v.meta,
       }))
       .sort((a, b) => b.percentual - a.percentual)
-  }, [])
+  }, [vendedoresFiltrados])
 
   // Contagem de metas batidas vs pendentes
   const metasResumo = useMemo(() => {
@@ -126,9 +183,12 @@ export function Dashboard() {
       batidas,
       pendentes,
       total: vendedoresRanking.length,
-      percentualBatidas: Math.round((batidas / vendedoresRanking.length) * 100),
+      percentualBatidas: vendedoresRanking.length > 0 ? Math.round((batidas / vendedoresRanking.length) * 100) : 0,
     }
   }, [vendedoresRanking])
+
+  // Obter nome do serviço selecionado
+  const servicoSelecionadoLabel = tiposServico.find(s => s.value === servicoFiltro)?.label || 'Todos'
 
   return (
     <div className="space-y-8">
@@ -169,7 +229,55 @@ export function Dashboard() {
             </button>
           </div>
         </div>
-        <p className="text-gray-600">Visão geral das métricas financeiras e desempenho de vendas</p>
+
+        {/* Linha com descrição e filtro de serviço */}
+        <div className="flex items-center justify-between">
+          <p className="text-gray-600">Visão geral das métricas financeiras e desempenho de vendas</p>
+          
+          {/* Botão de Filtro por Serviço */}
+          <div className="relative">
+            <button
+              onClick={() => setFiltroAberto(!filtroAberto)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                servicoFiltro !== 'todos'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <Filter className="h-4 w-4" />
+              {servicoFiltro === 'todos' ? 'Filtrar Serviço' : servicoSelecionadoLabel}
+              {filtroAberto ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+
+            {/* Dropdown de Serviços */}
+            {filtroAberto && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                <div className="p-2">
+                  {tiposServico.map((servico) => (
+                    <button
+                      key={servico.value}
+                      onClick={() => {
+                        setServicoFiltro(servico.value)
+                        setFiltroAberto(false)
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        servicoFiltro === servico.value
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {servico.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Métricas Principais - Grid 2x2 */}
