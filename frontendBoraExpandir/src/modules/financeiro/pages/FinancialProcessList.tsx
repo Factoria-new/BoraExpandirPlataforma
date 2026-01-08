@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { ExternalLink, Send, CheckCircle, FileText } from "lucide-react";
+import { ExternalLink, Send, CheckCircle, FileText, FileSignature, Calendar, DollarSign } from "lucide-react";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "../components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -22,9 +22,12 @@ import { Card, CardContent } from "../components/ui/card";
 
 interface FinancialProcess {
   id: string;
+  contratoId: string;
   cliente: string;
   servico: string;
   valorTotal: number;
+  valorEntrada: number;
+  dataVencimentoEntrada: string;
   progressoPagamento: number;
   totalParcelas: number;
   parcelasPagas: number;
@@ -45,9 +48,12 @@ interface Installment {
 const processes: FinancialProcess[] = [
   {
     id: "1",
+    contratoId: "CTR-2024-001",
     cliente: "Carlos Mendes",
     servico: "Visto D7",
     valorTotal: 5000,
+    valorEntrada: 2000,
+    dataVencimentoEntrada: "10/10/2024",
     progressoPagamento: 50,
     totalParcelas: 4,
     parcelasPagas: 2,
@@ -57,9 +63,12 @@ const processes: FinancialProcess[] = [
   },
   {
     id: "2",
+    contratoId: "CTR-2024-002",
     cliente: "Ana Paula Costa",
     servico: "Cidadania Portuguesa",
     valorTotal: 8000,
+    valorEntrada: 3000,
+    dataVencimentoEntrada: "15/10/2024",
     progressoPagamento: 37.5,
     totalParcelas: 4,
     parcelasPagas: 1,
@@ -69,9 +78,12 @@ const processes: FinancialProcess[] = [
   },
   {
     id: "3",
+    contratoId: "CTR-2024-003",
     cliente: "Roberto Silva",
     servico: "Green Card EB-2",
     valorTotal: 12000,
+    valorEntrada: 4000,
+    dataVencimentoEntrada: "01/12/2024",
     progressoPagamento: 0,
     totalParcelas: 6,
     parcelasPagas: 0,
@@ -147,6 +159,7 @@ export function FinancialProcessList() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID Contrato</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
@@ -164,6 +177,7 @@ export function FinancialProcessList() {
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => setSelectedProcess(process)}
                 >
+                  <TableCell className="font-mono text-sm font-medium text-blue-600">{process.contratoId}</TableCell>
                   <TableCell>{getStatusBadge(process.status)}</TableCell>
                   <TableCell className="font-medium">{process.cliente}</TableCell>
                   <TableCell>{process.servico}</TableCell>
@@ -204,17 +218,64 @@ export function FinancialProcessList() {
         </CardContent>
       </Card>
 
-      {/* Transaction Details Drawer */}
+      {/* Transaction Details Modal */}
       {selectedProcess && (
-        <Sheet open={!!selectedProcess} onOpenChange={() => setSelectedProcess(null)}>
-          <SheetContent className="sm:max-w-2xl overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Extrato Financeiro - {selectedProcess.cliente}</SheetTitle>
-              <SheetDescription>Detalhamento de pagamentos e parcelas</SheetDescription>
-            </SheetHeader>
+        <Dialog open={!!selectedProcess} onOpenChange={() => setSelectedProcess(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Extrato Financeiro - {selectedProcess.cliente}</DialogTitle>
+              <DialogDescription>Detalhamento de pagamentos e parcelas</DialogDescription>
+            </DialogHeader>
 
-            {/* Summary Section */}
+            {/* Contract Info Section */}
             <div className="mt-6 space-y-4">
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FileSignature className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-semibold text-lg text-blue-900">Dados do Contrato</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/70 rounded-lg p-3 border border-blue-100">
+                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">ID do Contrato</p>
+                      <p className="text-lg font-bold font-mono text-blue-700">{selectedProcess.contratoId}</p>
+                    </div>
+                    <div className="bg-white/70 rounded-lg p-3 border border-blue-100">
+                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Valor Total</p>
+                      <p className="text-lg font-bold font-mono text-foreground">
+                        R$ {selectedProcess.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Entry Info Section */}
+              <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <DollarSign className="h-5 w-5 text-emerald-600" />
+                    <h3 className="font-semibold text-lg text-emerald-900">Dados da Entrada</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/70 rounded-lg p-3 border border-emerald-100">
+                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Valor da Entrada</p>
+                      <p className="text-lg font-bold font-mono text-emerald-700">
+                        R$ {selectedProcess.valorEntrada.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="bg-white/70 rounded-lg p-3 border border-emerald-100">
+                      <div className="flex items-center gap-1 mb-1">
+                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Data de Vencimento</p>
+                      </div>
+                      <p className="text-lg font-bold font-mono text-emerald-700">{selectedProcess.dataVencimentoEntrada}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Summary Section */}
               <Card className="bg-muted/30">
                 <CardContent className="pt-6">
                   <div className="grid grid-cols-3 gap-4 text-center">
@@ -305,8 +366,8 @@ export function FinancialProcessList() {
                 </Button>
               </div>
             </div>
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
