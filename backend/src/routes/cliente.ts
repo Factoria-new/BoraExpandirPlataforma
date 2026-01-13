@@ -37,7 +37,9 @@ cliente.post('/uploadDoc', upload.single('file'), ClienteController.uploadDoc.bi
 cliente.get('/clientesbyparceiro/:parceiroId', ClienteController.getByParceiro.bind(ClienteController))
 
 // Rotas de documentos
+cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
 cliente.get('/:clienteId/documentos', ClienteController.getDocumentos.bind(ClienteController))
+cliente.get('/processo/:processoId/documentos', ClienteController.getDocumentosByProcesso.bind(ClienteController))
 cliente.delete('/documento/:documentoId', ClienteController.deleteDocumento.bind(ClienteController))
 cliente.patch('/documento/:documentoId/status', ClienteController.updateDocumentoStatus.bind(ClienteController))
 

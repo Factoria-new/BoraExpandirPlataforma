@@ -16,6 +16,7 @@ interface UploadDocumentResult {
 // Interface para criar um registro de documento
 interface CreateDocumentoParams {
     clienteId: string
+    processoId?: string  // ID do processo ao qual o documento pertence
     tipo: string
     nomeOriginal: string
     nomeArquivo: string
@@ -29,6 +30,7 @@ interface CreateDocumentoParams {
 interface DocumentoRecord {
     id: string
     cliente_id: string
+    processo_id: string | null  // ID do processo associado
     tipo: string
     nome_original: string
     nome_arquivo: string
@@ -73,6 +75,22 @@ class ClienteRepository {
         throw error
       }
       return data
+    }
+
+    // Buscar processos de um cliente
+    async getProcessosByClienteId(clienteId: string) {
+        const { data, error } = await supabase
+            .from('processos')
+            .select('id, tipo_servico, status, etapa_atual, created_at, updated_at')
+            .eq('cliente_id', clienteId)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar processos do cliente:', error)
+            throw error
+        }
+
+        return data || []
     }
     async register(cliente: ClienteDTO) {      
         const { data: createdData, error } = await supabase
@@ -132,6 +150,7 @@ class ClienteRepository {
             .from('documentos')
             .insert([{
                 cliente_id: params.clienteId,
+                processo_id: params.processoId || null,  // Associa ao processo
                 tipo: params.tipo,
                 nome_original: params.nomeOriginal,
                 nome_arquivo: params.nomeArquivo,
@@ -163,6 +182,22 @@ class ClienteRepository {
 
         if (error) {
             console.error('Erro ao buscar documentos:', error)
+            throw error
+        }
+
+        return (data || []) as DocumentoRecord[]
+    }
+
+    // Buscar documentos de um processo
+    async getDocumentosByProcessoId(processoId: string): Promise<DocumentoRecord[]> {
+        const { data, error } = await supabase
+            .from('documentos')
+            .select('*')
+            .eq('processo_id', processoId)
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar documentos do processo:', error)
             throw error
         }
 

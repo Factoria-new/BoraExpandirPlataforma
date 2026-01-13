@@ -1,7 +1,75 @@
 import type { ClienteDTO } from '../types/parceiro';
 import ClienteRepository from '../repositories/ClienteRepository';
+import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../config/documentosConfig';
+
+// Interface para o documento requerido com informações do processo
+interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
+  processoId: string;
+  processoTipo: string;
+  processoStatus: string;
+  processoEtapa: number;
+}
 
 class ClienteController {
+  // GET /cliente/:clienteId/documentos-requeridos
+  // Retorna os documentos necessários baseado nos processos do cliente
+  async getDocumentosRequeridos(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      // Buscar os processos do cliente
+      const processos = await ClienteRepository.getProcessosByClienteId(clienteId)
+
+      if (!processos || processos.length === 0) {
+        return res.status(200).json({
+          message: 'Cliente não possui processos ativos',
+          data: [],
+          processos: []
+        })
+      }
+
+      // Para cada processo, buscar os documentos requeridos baseado no tipo_servico
+      const documentosRequeridos: DocumentoRequeridoComProcesso[] = []
+
+      for (const processo of processos) {
+        const docsDoServico = getDocumentosPorTipoServico(processo.tipo_servico)
+        
+        // Adicionar cada documento com as informações do processo
+        for (const doc of docsDoServico) {
+          documentosRequeridos.push({
+            ...doc,
+            processoId: processo.id,
+            processoTipo: processo.tipo_servico,
+            processoStatus: processo.status,
+            processoEtapa: processo.etapa_atual
+          })
+        }
+      }
+
+      return res.status(200).json({
+        message: 'Documentos requeridos recuperados com sucesso',
+        data: documentosRequeridos,
+        processos: processos.map(p => ({
+          id: p.id,
+          tipoServico: p.tipo_servico,
+          status: p.status,
+          etapaAtual: p.etapa_atual
+        })),
+        totalDocumentos: documentosRequeridos.length
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar documentos requeridos:', error)
+      return res.status(500).json({ 
+        message: 'Erro ao buscar documentos requeridos', 
+        error: error.message 
+      })
+    }
+  }
+
   // GET /cliente/by-parceiro/:parceiroId
   async getByParceiro(req: any, res: any) {
     try {
@@ -50,13 +118,14 @@ class ClienteController {
 
   async uploadDoc(req: any, res: any) {
     try {
-      const { clienteId, documentType } = req.body
+      const { clienteId, documentType, processoId } = req.body
       const file = req.file
 
       // Logs de debug
       console.log('========== UPLOAD DOC DEBUG ==========')
       console.log('req.body:', req.body)
       console.log('clienteId:', clienteId)
+      console.log('processoId:', processoId)
       console.log('documentType:', documentType)
       console.log('file:', file ? {
         originalname: file.originalname,
@@ -81,7 +150,11 @@ class ClienteController {
       const timestamp = Date.now()
       const fileExtension = file.originalname.split('.').pop()
       const fileName = `${documentType}_${timestamp}.${fileExtension}`
-      const filePath = `${clienteId}/${documentType}/${fileName}`
+      
+      // Se tiver processoId, organiza no storage por processo
+      const filePath = processoId 
+        ? `${clienteId}/${processoId}/${documentType}/${fileName}`
+        : `${clienteId}/${documentType}/${fileName}`
 
       console.log('FilePath gerado:', filePath)
 
@@ -92,9 +165,10 @@ class ClienteController {
         contentType: file.mimetype
       })
 
-      // Criar registro do documento no banco de dados
+      // Criar registro do documento no banco de dados (com processoId se fornecido)
       const documentoRecord = await ClienteRepository.createDocumento({
         clienteId,
+        processoId: processoId || undefined,  // Associa ao processo se fornecido
         tipo: documentType,
         nomeOriginal: file.originalname,
         nomeArquivo: fileName,
@@ -114,6 +188,7 @@ class ClienteController {
           fileName: file.originalname,
           documentType,
           clienteId,
+          processoId: processoId || null,
           status: documentoRecord.status
         }
       })
@@ -145,6 +220,31 @@ class ClienteController {
       console.error('Erro ao buscar documentos:', error)
       return res.status(500).json({ 
         message: 'Erro ao buscar documentos', 
+        error: error.message 
+      })
+    }
+  }
+
+  // GET /cliente/processo/:processoId/documentos
+  async getDocumentosByProcesso(req: any, res: any) {
+    try {
+      const { processoId } = req.params
+
+      if (!processoId) {
+        return res.status(400).json({ message: 'processoId é obrigatório' })
+      }
+
+      const documentos = await ClienteRepository.getDocumentosByProcessoId(processoId)
+
+      return res.status(200).json({
+        message: 'Documentos do processo recuperados com sucesso',
+        data: documentos,
+        total: documentos.length
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar documentos do processo:', error)
+      return res.status(500).json({ 
+        message: 'Erro ao buscar documentos do processo', 
         error: error.message 
       })
     }

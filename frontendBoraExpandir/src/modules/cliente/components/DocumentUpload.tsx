@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
-import { Upload, FileText, AlertCircle, CheckCircle, Clock, X, Trash2, Loader2 } from 'lucide-react'
+import { Upload, FileText, AlertCircle, CheckCircle, Clock, X, Trash2, Loader2, RefreshCw } from 'lucide-react'
 import { Document, RequiredDocument } from '../types'
 import { cn, formatDate, formatFileSize } from '../lib/utils'
 
@@ -9,17 +9,30 @@ interface PendingUpload {
   file: File
   documentType: string
   documentName: string
+  processoId?: string     // ID do processo ao qual o documento pertence
+  processoTipo?: string   // Tipo do processo para exibição
+}
+
+interface Processo {
+  id: string
+  tipoServico: string
+  status: string
+  etapaAtual: number
 }
 
 interface DocumentUploadProps {
   clienteId: string
   documents: Document[]
-  requiredDocuments: RequiredDocument[]
+  requiredDocuments?: RequiredDocument[]  // Agora opcional - fallback caso API falhe
   onUploadSuccess?: (data: any) => void
   onDelete: (documentId: string) => void
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+// TODO: Substituir por ID do cliente logado quando implementar autenticação
+// Este cliente tem processos: Cidadania Portuguesa e Visto D7
+const MOCK_CLIENTE_LOGADO_ID = 'a004a6b8-4a03-42e4-94a9-bb62c8238c0c'
 
 const statusConfig = {
   pending: {
@@ -56,19 +69,77 @@ const statusConfig = {
   },
 }
 
-export function DocumentUpload({ clienteId, documents, requiredDocuments, onUploadSuccess, onDelete }: DocumentUploadProps) {
+export function DocumentUpload({ clienteId, documents, requiredDocuments: fallbackDocuments = [], onUploadSuccess, onDelete }: DocumentUploadProps) {
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
+  // Estados para buscar documentos da API
+  const [requiredDocuments, setRequiredDocuments] = useState<RequiredDocument[]>(fallbackDocuments)
+  const [processos, setProcessos] = useState<Processo[]>([])
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Buscar documentos requeridos da API
+  // TODO: Usar clienteId do usuário logado quando implementar autenticação
+  const fetchDocumentosRequeridos = async () => {
+    setIsLoadingDocs(true)
+    setLoadError(null)
+
+    try {
+      // Usando MOCK_CLIENTE_LOGADO_ID temporariamente até implementar login
+      const response = await fetch(`${API_BASE_URL}/cliente/${MOCK_CLIENTE_LOGADO_ID}/documentos-requeridos`)
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar documentos requeridos')
+      }
+
+      const result = await response.json()
+      
+      // Mapear os dados da API para o formato esperado pelo componente
+      const docsFromApi: RequiredDocument[] = result.data.map((doc: any) => ({
+        type: doc.type,
+        name: doc.name,
+        description: doc.description,
+        required: doc.required,
+        examples: doc.examples,
+        processoId: doc.processoId,
+        processoTipo: doc.processoTipo,
+      }))
+      console.log(docsFromApi)
+
+      setRequiredDocuments(docsFromApi)
+      setProcessos(result.processos || [])
+      
+      console.log('Documentos requeridos carregados:', docsFromApi.length)
+      console.log('Processos do cliente:', result.processos)
+    } catch (error: any) {
+      console.error('Erro ao buscar documentos requeridos:', error)
+      setLoadError(error.message || 'Erro ao carregar documentos')
+      // Usar fallback se disponível
+      if (fallbackDocuments.length > 0) {
+        setRequiredDocuments(fallbackDocuments)
+      }
+    } finally {
+      setIsLoadingDocs(false)
+    }
+  }
+
+  // Buscar documentos ao montar o componente
+  useEffect(() => {
+    if (clienteId) {
+      fetchDocumentosRequeridos()
+    }
+  }, [clienteId])
+
   const getDocumentName = (type: string): string => {
     const reqDoc = requiredDocuments.find(doc => doc.type === type)
     return reqDoc?.name || type
   }
 
-  const handleDrop = (e: React.DragEvent, documentType: string) => {
+  const handleDrop = (e: React.DragEvent, documentType: string, processoId?: string, processoTipo?: string) => {
     e.preventDefault()
     setDragOver(null)
     
@@ -77,20 +148,24 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
       setPendingUpload({
         file: files[0],
         documentType,
-        documentName: getDocumentName(documentType)
+        documentName: getDocumentName(documentType),
+        processoId,
+        processoTipo
       })
       setShowConfirmModal(true)
       setUploadError(null)
     }
   }
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>, documentType: string) => {
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>, documentType: string, processoId?: string, processoTipo?: string) => {
     const files = Array.from(e.target.files || [])
     if (files.length > 0) {
       setPendingUpload({
         file: files[0],
         documentType,
-        documentName: getDocumentName(documentType)
+        documentName: getDocumentName(documentType),
+        processoId,
+        processoTipo
       })
       setShowConfirmModal(true)
       setUploadError(null)
@@ -109,6 +184,11 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
       formData.append('file', pendingUpload.file)
       formData.append('clienteId', clienteId)
       formData.append('documentType', pendingUpload.documentType)
+      
+      // Adiciona processoId se existir
+      if (pendingUpload.processoId) {
+        formData.append('processoId', pendingUpload.processoId)
+      }
 
       const response = await fetch(`${API_BASE_URL}/cliente/uploadDoc`, {
         method: 'POST',
@@ -152,6 +232,37 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
   const approvedCount = documents.filter(doc => doc.status === 'approved').length
   const rejectedCount = documents.filter(doc => doc.status === 'rejected').length
 
+  // Loading state para busca inicial de documentos
+  if (isLoadingDocs) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-gray-600 dark:text-gray-400">Carregando documentos requeridos...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Estado de erro ao buscar documentos
+  if (loadError && requiredDocuments.length === 0) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-3" />
+          <p className="text-red-700 dark:text-red-300 font-medium">{loadError}</p>
+          <button 
+            onClick={fetchDocumentosRequeridos}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 mx-auto"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -159,6 +270,34 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upload de Documentos</h2>
         <p className="text-gray-600 dark:text-gray-400">Envie os documentos necessários para o seu processo.</p>
       </div>
+
+      {/* Processos do Cliente */}
+      {processos.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">Seus Processos Ativos</h3>
+          <div className="flex flex-wrap gap-2">
+            {processos.map((processo) => (
+              <div 
+                key={processo.id}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg border shadow-sm"
+              >
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  processo.status === 'em_analise' ? 'bg-blue-500' :
+                  processo.status === 'pendente_documentos' ? 'bg-yellow-500' :
+                  processo.status === 'concluido' ? 'bg-green-500' : 'bg-gray-400'
+                )} />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {processo.tipoServico}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Etapa {processo.etapaAtual}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Status Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -243,6 +382,11 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
                     <h3 className="font-medium text-sm text-gray-900 dark:text-white truncate">
                       {reqDoc.name}
                     </h3>
+                    {reqDoc.processoTipo && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 truncate mt-0.5">
+                        {reqDoc.processoTipo}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 mt-2">
@@ -296,7 +440,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
                           id={`file-${reqDoc.type}-replace`}
                           className="hidden"
                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          onChange={(e) => handleFileInput(e, reqDoc.type)}
+                          onChange={(e) => handleFileInput(e, reqDoc.type, reqDoc.processoId, reqDoc.processoTipo)}
                         />
                         <Button
                           variant="outline"
@@ -336,7 +480,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                         : "border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
                     )}
-                    onDrop={(e) => handleDrop(e, reqDoc.type)}
+                    onDrop={(e) => handleDrop(e, reqDoc.type, reqDoc.processoId, reqDoc.processoTipo)}
                     onDragOver={(e) => {
                       e.preventDefault()
                       setDragOver(reqDoc.type)
@@ -366,7 +510,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
                       id={`file-${reqDoc.type}`}
                       className="hidden"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      onChange={(e) => handleFileInput(e, reqDoc.type)}
+                      onChange={(e) => handleFileInput(e, reqDoc.type, reqDoc.processoId, reqDoc.processoTipo)}
                     />
                   </div>
                 )}
@@ -434,6 +578,11 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments, onUplo
                 <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">
                   {pendingUpload.documentName}
                 </p>
+                {pendingUpload.processoTipo && (
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    Processo: {pendingUpload.processoTipo}
+                  </p>
+                )}
               </div>
 
               {/* Arquivo Selecionado */}

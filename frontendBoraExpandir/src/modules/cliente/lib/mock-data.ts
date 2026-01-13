@@ -227,6 +227,8 @@ export const mockRequiredDocuments: RequiredDocument[] = [
     description: 'Passaporte válido com pelo menos 6 meses de validade',
     required: true,
     examples: ['Todas as páginas do passaporte', 'Foto nítida e legível'],
+    processoId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',  // UUID válido do processo
+    processoTipo: 'Visto de Trabalho - Canadá',
   },
   {
     type: 'educacao',
@@ -234,6 +236,8 @@ export const mockRequiredDocuments: RequiredDocument[] = [
     description: 'Comprovante de formação acadêmica',
     required: true,
     examples: ['Diploma universitário', 'Certificado técnico', 'Histórico escolar'],
+    processoId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',  // UUID válido do processo
+    processoTipo: 'Visto de Trabalho - Canadá',
   },
   {
     type: 'experiencia',
@@ -241,6 +245,8 @@ export const mockRequiredDocuments: RequiredDocument[] = [
     description: 'Documentos que comprovem experiência de trabalho',
     required: true,
     examples: ['Carta de referência', 'Carteira de trabalho', 'Contrato de trabalho'],
+    processoId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',  // UUID válido do processo
+    processoTipo: 'Visto de Trabalho - Canadá',
   },
   {
     type: 'idioma',
@@ -248,5 +254,8 @@ export const mockRequiredDocuments: RequiredDocument[] = [
     description: 'Comprovante de proficiência em inglês ou francês',
     required: false,
     examples: ['IELTS', 'TOEFL', 'CELPIP', 'TEF'],
+    processoId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',  // UUID válido do processo
+    processoTipo: 'Visto de Trabalho - Canadá',
   },
 ]
+

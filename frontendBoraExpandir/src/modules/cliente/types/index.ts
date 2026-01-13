@@ -81,6 +81,8 @@ export interface RequiredDocument {
   description: string;
   required: boolean;
   examples?: string[];
+  processoId?: string;     // ID do processo ao qual este documento pertence
+  processoTipo?: string;   // Tipo do processo (ex: "Visto de Trabalho - Canadá")
 }
 
 export interface ApprovedDocument {
