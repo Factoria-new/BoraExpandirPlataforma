@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { CheckCircle, XCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
+import { Checkbox } from "./ui/checkbox";
 
 interface ReviewActionsProps {
   docId: string;
   currentStatus: "approved" | "pending" | "rejected";
-  onStatusChange: (status: "approved" | "rejected") => void;
+  onStatusChange: (status: "approved" | "rejected", isApostilled?: boolean) => void;
 }
 
 export function ReviewActions({
@@ -17,6 +18,7 @@ export function ReviewActions({
   const [isRejecting, setIsRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isApostilled, setIsApostilled] = useState(false);
   const [message, setMessage] = useState<null | { type: "success" | "error"; title: string; description?: string }>(null);
 
   // Auto-clear transient messages
@@ -32,7 +34,7 @@ export function ReviewActions({
 
     // Simula atualização no backend
     setTimeout(() => {
-      onStatusChange("approved");
+      onStatusChange("approved", isApostilled);
       setMessage({
         type: "success",
         title: "Documento aprovado com sucesso!",
@@ -88,11 +90,10 @@ export function ReviewActions({
       <div className="space-y-4 p-4 bg-destructive-light border-2 border-destructive/20 rounded-lg">
         {message && (
           <div
-            className={`rounded-md p-3 text-sm flex flex-col gap-1 ${
-              message.type === "success"
-                ? "bg-success/10 text-success"
-                : "bg-destructive/10 text-destructive"
-            }`}
+            className={`rounded-md p-3 text-sm flex flex-col gap-1 ${message.type === "success"
+              ? "bg-success/10 text-success"
+              : "bg-destructive/10 text-destructive"
+              }`}
           >
             <strong>{message.title}</strong>
             {message.description && <span className="text-muted-foreground text-xs">{message.description}</span>}
@@ -137,17 +138,30 @@ export function ReviewActions({
     <div className="flex flex-col gap-4">
       {message && (
         <div
-          className={`rounded-md p-3 text-sm flex flex-col gap-1 ${
-            message.type === "success"
-              ? "bg-success/10 text-success"
-              : "bg-destructive/10 text-destructive"
-          }`}
+          className={`rounded-md p-3 text-sm flex flex-col gap-1 ${message.type === "success"
+            ? "bg-success/10 text-success"
+            : "bg-destructive/10 text-destructive"
+            }`}
         >
           <strong>{message.title}</strong>
           {message.description && <span className="text-muted-foreground text-xs">{message.description}</span>}
         </div>
       )}
-      <div className="flex gap-4 justify-end">
+      <div className="flex gap-4 justify-end items-center">
+        <div className="flex items-center space-x-2 mr-4">
+          <Checkbox
+            id="apostilled"
+            checked={isApostilled}
+            onCheckedChange={(checked) => setIsApostilled(checked as boolean)}
+          />
+          <label
+            htmlFor="apostilled"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            Documento já apostilado?
+          </label>
+        </div>
+
         <Button
           className="border-destructive/30 text-destructive hover:bg-destructive-light gap-2"
           onClick={() => setIsRejecting(true)}

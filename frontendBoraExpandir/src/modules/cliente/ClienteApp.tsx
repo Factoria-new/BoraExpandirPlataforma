@@ -5,7 +5,6 @@ import type { SidebarGroup } from '../../components/ui/Sidebar'
 import { Dashboard } from './components/Dashboard'
 import PartnerDashboard from './components/PartnerDashboard'
 import { DocumentUpload } from './components/DocumentUpload'
-import { DocumentStatus } from './components/DocumentStatus'
 import { ProcessTimeline } from './components/ProcessTimeline'
 import { Notifications } from './components/Notifications'
 import { DocumentModal } from './components/DocumentModal'
@@ -20,24 +19,58 @@ import {
   mockRequiredDocuments,
   mockApprovedDocuments,
   mockTranslatedDocuments,
+  mockPendingActions,
 } from './lib/mock-data'
 import { Document, Notification, ApprovedDocument, TranslatedDocument } from './types'
-import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings } from 'lucide-react'
+import { Apostilamento } from './components/Apostilamento'
+import { DocumentUploadFlow } from './components/DocumentUploadFlow'
+import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
 import { Config } from '../../components/ui/Config'
+import { RequiredActionModal } from './components/RequiredActionModal'
 
 export function ClienteApp() {
   const location = useLocation()
   const navigate = useNavigate()
   const [documents, setDocuments] = useState<Document[]>(mockDocuments)
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+
+  // Create notifications from pending actions
+  const pendingActionNotifications: Notification[] = mockPendingActions.map(action => ({
+    id: `pending-notif-${action.id}`,
+    clientId: mockClient.id,
+    type: action.priority === 'high' ? 'warning' : 'info',
+    title: `Ação Necessária: ${action.title}`,
+    message: action.description,
+    read: false,
+    createdAt: new Date(),
+  }))
+
+  const [notifications, setNotifications] = useState<Notification[]>([...pendingActionNotifications, ...mockNotifications])
+
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [approvedDocuments, setApprovedDocuments] = useState<ApprovedDocument[]>(mockApprovedDocuments)
   const [translatedDocuments, setTranslatedDocuments] = useState<TranslatedDocument[]>(mockTranslatedDocuments)
+  const [isRequiredModalOpen, setIsRequiredModalOpen] = useState(false)
 
   const unreadNotifications = notifications.filter(n => !n.read).length
   const isPartnerOnly = !!mockClient.isPartner && mockClient.isClient === false
+
+  useEffect(() => {
+    // Check if user has already acknowledged pending actions
+    const hasAcknowledged = localStorage.getItem('acknowledgedPendingActions')
+
+    // Check if there are new actions (in a real app, we might compare IDs or timestamps)
+    // For now, if we have actions and haven't acknowledged, show modal
+    if (mockPendingActions.length > 0 && !hasAcknowledged) {
+      setIsRequiredModalOpen(true)
+    }
+  }, [])
+
+  const handleCloseRequiredModal = () => {
+    setIsRequiredModalOpen(false)
+    localStorage.setItem('acknowledgedPendingActions', 'true')
+  }
 
   const handleBecomeClient = () => {
     navigate('/cliente/agendamento')
@@ -166,6 +199,26 @@ export function ClienteApp() {
     }, 100)
   }
 
+  const handleSendForApostille = (documentIds: string[]) => {
+    setDocuments(prev => prev.map(doc => {
+      if (documentIds.includes(doc.id)) {
+        return { ...doc, status: 'sent_for_apostille' }
+      }
+      return doc
+    }))
+
+    const newNotification: Notification = {
+      id: Date.now().toString(),
+      clientId: mockClient.id,
+      type: 'success',
+      title: 'Documentos Enviados para Apostilamento',
+      message: 'Seus documentos foram enviados para a equipe administrativa iniciar o processo de apostilamento.',
+      read: false,
+      createdAt: new Date(),
+    }
+    setNotifications(prev => [newNotification, ...prev])
+  }
+
   // Auto-mark all notifications as read when entering notifications page
   useEffect(() => {
     if (location.pathname === '/cliente/notificacoes') {
@@ -197,14 +250,14 @@ export function ClienteApp() {
           { label: 'Dashboard', to: '/cliente', icon: Home },
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
           { label: 'Agendamento', to: '/cliente/agendamento', icon: Calendar },
-          { 
-            label: 'Documentos', 
+          {
+            label: 'Documentos',
             icon: FileText,
             children: [
-              { label: 'Status Documentos', to: '/cliente/documentos', icon: FileText },
               { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
             ]
           },
+          { label: 'Apostilamento', to: '/cliente/apostilamento', icon: Stamp },
           { label: 'Tradução', to: '/cliente/traducao', icon: Languages },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
 
@@ -314,19 +367,9 @@ export function ClienteApp() {
           />
           <Route path="agendamento" element={<ClienteAgendamento client={mockClient} />} />
           <Route
-            path="documentos"
-            element={
-              <DocumentStatus
-                documents={documents}
-                onUpload={handleUploadFromStatus}
-                onView={handleViewDocument}
-              />
-            }
-          />
-          <Route
             path="upload"
             element={
-              <DocumentUpload
+              <DocumentUploadFlow
                 clienteId={mockClient.id}
                 documents={documents}
                 requiredDocuments={mockRequiredDocuments}
@@ -349,6 +392,16 @@ export function ClienteApp() {
                   })
                 }}
                 onDelete={handleDeleteDocument}
+              />
+            }
+          />
+          <Route
+            path="apostilamento"
+            element={
+              <Apostilamento
+                client={mockClient}
+                documents={documents}
+                onSendForApostille={handleSendForApostille}
               />
             }
           />
@@ -380,7 +433,7 @@ export function ClienteApp() {
               />
             }
           />
-          <Route path="configuracoes" element={<Config />} />
+          <Route path="configuracoes" element={<Config client={mockClient} />} />
         </Routes>
       </main>
 
@@ -388,6 +441,12 @@ export function ClienteApp() {
         document={selectedDocument}
         isOpen={isDocumentModalOpen}
         onClose={() => setIsDocumentModalOpen(false)}
+      />
+
+      <RequiredActionModal
+        isOpen={isRequiredModalOpen}
+        onClose={handleCloseRequiredModal}
+        actions={mockPendingActions}
       />
     </div>
   )

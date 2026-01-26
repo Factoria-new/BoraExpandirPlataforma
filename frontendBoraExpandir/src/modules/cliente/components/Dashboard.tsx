@@ -1,20 +1,26 @@
 'use client'
 
+import { Link } from 'react-router-dom'
+
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
-import { 
-  FileText, 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
+import {
+  FileText,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
   User,
   Target,
-  TrendingUp
+  TrendingUp,
+  XCircle
 } from 'lucide-react'
 import { Client, Document, Process } from '../types'
-import { formatDate } from '../lib/utils'
+import { formatDate, formatDateSimple } from '../lib/utils'
 import { AppointmentReminder } from './AppointmentReminder'
+import { ReminderCard } from './ReminderCard'
+import { CountdownTimer } from './CountdownTimer'
+import { mockReminders, mockPendingActions } from '../lib/mock-data'
 
 interface DashboardProps {
   client: Client
@@ -39,12 +45,12 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
 
   const stats = [
     {
-      title: 'Progresso do Processo',
-      value: `${Math.round(progressPercentage)}%`,
-      description: `${completedSteps} de ${totalSteps} etapas concluídas`,
-      icon: Target,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+      title: 'Documentos Rejeitados',
+      value: rejectedDocuments.toString(),
+      description: 'Necessitam correção',
+      icon: XCircle,
+      color: 'text-red-600 dark:text-red-400',
+      bgColor: 'bg-red-100 dark:bg-red-900/30',
     },
     {
       title: 'Documentos Aprovados',
@@ -64,8 +70,8 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
     },
     {
       title: 'Pendências',
-      value: (pendingDocuments + rejectedDocuments).toString(),
-      description: 'Documentos para enviar/corrigir',
+      value: pendingDocuments.toString(),
+      description: 'Documentos para enviar',
       icon: AlertTriangle,
       color: 'text-yellow-600 dark:text-yellow-400',
       bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
@@ -80,86 +86,125 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
     location: "Online - WhatsApp/Zoom"
   }
 
+  // Convert Pending Actions to Reminders
+  const pendingActionReminders: import('../types').Reminder[] = mockPendingActions.map(action => ({
+    id: `pending-${action.id}`,
+    title: action.title,
+    message: `${action.description} (Vence em: ${formatDateSimple(action.deadline)})`,
+    date: action.deadline,
+    type: (action.priority === 'high' ? 'urgent' : 'warning') as 'urgent' | 'warning',
+    actionLink: '/juridico'
+  }))
+
+  const legalReminders = [...pendingActionReminders, ...mockReminders.legal]
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-8 text-white">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-            <User className="h-8 w-8" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold">Bem-vindo, {client.name}!</h1>
-            <p className="text-blue-100 text-lg">{client.serviceType}</p>
-            <div className="flex items-center space-x-4 mt-2">
-              <Badge variant="secondary" className="bg-white bg-opacity-20 text-white border-0">
-                Cliente desde {formatDate(client.createdAt)}
-              </Badge>
-              {client.paymentStatus === 'confirmed' && (
-                <Badge variant="secondary" className="bg-green-500 text-white border-0">
-                  ✓ Pagamento Confirmado
+      <div className="flex justify-center mb-8">
+        <div className="w-full max-w-3xl bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-8 text-white shadow-lg">
+          <div className="flex items-center justify-center space-x-6">
+            <Link to="/cliente/configuracoes?tab=meus-dados" className="flex-shrink-0 transition-transform hover:scale-105 cursor-pointer">
+              <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-2 border-white/30 hover:border-white/60">
+                <User className="h-10 w-10" />
+              </div>
+            </Link>
+            <div className="text-center md:text-left">
+              <h1 className="text-3xl font-bold mb-1">Bem-vindo, {client.name}!</h1>
+              <p className="text-blue-100 text-sm mb-2 opacity-80">ID: {client.id}</p>
+              <div className="flex items-center justify-center md:justify-start space-x-4">
+                <Badge variant="secondary" className="bg-white bg-opacity-20 text-white border-0 px-3 py-1">
+                  Cliente desde {formatDateSimple(client.createdAt)}
                 </Badge>
-              )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Appointment Reminder */}
-      <AppointmentReminder 
-        appointmentDate={nextAppointment.date}
-        appointmentTime={nextAppointment.time}
-        service={nextAppointment.service}
-        location={nextAppointment.location}
-      />
-
-      {/* Quick Actions */}
-      {(pendingDocuments > 0 || rejectedDocuments > 0) && (
-        <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-          <CardHeader>
-            <CardTitle className="text-yellow-800 dark:text-yellow-200 flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5" />
-              <span>Ações Necessárias</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {pendingDocuments > 0 && (
-                <p className="text-yellow-700 dark:text-yellow-300">
-                  • Você tem {pendingDocuments} documento(s) pendente(s) para envio
-                </p>
-              )}
-              {rejectedDocuments > 0 && (
-                <p className="text-yellow-700 dark:text-yellow-300">
-                  • Você tem {rejectedDocuments} documento(s) rejeitado(s) que precisa(m) ser corrigido(s)
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stats Grid */}
+      {/* Reminders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon
-          return (
-            <Card key={index} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{stat.description}</p>
-                  </div>
+
+
+
+        {/* Appointment Reminder - Restored */}
+        <AppointmentReminder
+          appointmentDate={nextAppointment.date}
+          appointmentTime={nextAppointment.time}
+          service={nextAppointment.service}
+          location={nextAppointment.location}
+        />
+
+        {/* Administrative/Financial Reminders */}
+        <ReminderCard
+          title="Administrativo/Financeiro"
+          type="admin"
+          reminders={mockReminders.admin}
+        />
+
+
+
+        {/* Legal Reminders */}
+        <ReminderCard
+          title="Jurídico"
+          type="legal"
+          reminders={legalReminders}
+        />
+
+        {/* Commercial Reminders */}
+        <ReminderCard
+          title="Comercial"
+          type="commercial"
+          reminders={mockReminders.commercial}
+        />
+      </div>
+
+      {/* Required Actions Countdown Section */}
+      {mockPendingActions.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {mockPendingActions.map(action => (
+            <Card key={action.id} className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-red-700 dark:text-red-400 flex items-center space-x-2 text-lg">
+                  <AlertTriangle className="h-5 w-5" />
+                  <span>{action.title}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{action.description}</p>
+                <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm">
+                  <CountdownTimer targetDate={action.deadline} variant="red" />
                 </div>
               </CardContent>
             </Card>
-          )
-        })}
+          ))}
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Documentos</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon
+            return (
+              <Card key={index} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-lg ${stat.bgColor}`}>
+                      <Icon className={`h-6 w-6 ${stat.color}`} />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{stat.description}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
@@ -179,23 +224,21 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
               </div>
               <Progress value={progressPercentage} className="h-3" />
             </div>
-            
+
             <div className="space-y-3">
               {process.steps.map((step, index) => (
                 <div key={step.id} className="flex items-center space-x-3">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    step.status === 'completed' ? 'bg-green-500 text-white' :
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step.status === 'completed' ? 'bg-green-500 text-white' :
                     step.status === 'in_progress' ? 'bg-blue-500 text-white' :
-                    'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                  }`}>
+                      'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}>
                     {index + 1}
                   </div>
                   <div className="flex-1">
-                    <p className={`text-sm font-medium ${
-                      step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
+                    <p className={`text-sm font-medium ${step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
                       step.status === 'in_progress' ? 'text-blue-700 dark:text-blue-400' :
-                      'text-gray-500 dark:text-gray-400'
-                    }`}>
+                        'text-gray-500 dark:text-gray-400'
+                      }`}>
                       {step.name}
                     </p>
                   </div>
@@ -236,16 +279,16 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
                     <Badge
                       variant={
                         doc.status === 'approved' ? 'success' :
-                        doc.status === 'rejected' ? 'destructive' :
-                        doc.status === 'analyzing' ? 'default' :
-                        'warning'
+                          doc.status === 'rejected' ? 'destructive' :
+                            doc.status === 'analyzing' ? 'default' :
+                              'warning'
                       }
                       className="text-xs"
                     >
                       {doc.status === 'pending' ? 'Pendente' :
-                       doc.status === 'analyzing' ? 'Análise' :
-                       doc.status === 'approved' ? 'Aprovado' :
-                       'Rejeitado'}
+                        doc.status === 'analyzing' ? 'Análise' :
+                          doc.status === 'approved' ? 'Aprovado' :
+                            'Rejeitado'}
                     </Badge>
                   </div>
                 ))

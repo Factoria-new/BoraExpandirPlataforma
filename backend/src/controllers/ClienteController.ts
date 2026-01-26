@@ -37,7 +37,7 @@ class ClienteController {
 
       for (const processo of processos) {
         const docsDoServico = getDocumentosPorTipoServico(processo.tipo_servico)
-        
+
         // Adicionar cada documento com as informações do processo
         for (const doc of docsDoServico) {
           documentosRequeridos.push({
@@ -63,9 +63,9 @@ class ClienteController {
       })
     } catch (error: any) {
       console.error('Erro ao buscar documentos requeridos:', error)
-      return res.status(500).json({ 
-        message: 'Erro ao buscar documentos requeridos', 
-        error: error.message 
+      return res.status(500).json({
+        message: 'Erro ao buscar documentos requeridos',
+        error: error.message
       })
     }
   }
@@ -88,11 +88,11 @@ class ClienteController {
 
   async register(req: any, res: any) {
     try {
-      
-      const { nome, email, whatsapp, parceiro_id, status} = req.body
-      const Cliente = { nome, email, whatsapp, parceiro_id, status } as ClienteDTO    
-      const createdData = await ClienteRepository.register(Cliente)  
-    return res.status(201).json(createdData)   
+
+      const { nome, email, whatsapp, parceiro_id, status } = req.body
+      const Cliente = { nome, email, whatsapp, parceiro_id, status } as ClienteDTO
+      const createdData = await ClienteRepository.register(Cliente)
+      return res.status(201).json(createdData)
     } catch (error) {
       throw error
     }
@@ -106,9 +106,9 @@ class ClienteController {
       if (!cliente) {
         return res.status(404).json({ message: 'Cliente não encontrado' })
       }
-      
+
       const updatedData = await ClienteRepository.attStatusById(cliente.id, status)
-     
+
 
       return res.status(200).json(updatedData)
     } catch (error) {
@@ -150,9 +150,9 @@ class ClienteController {
       const timestamp = Date.now()
       const fileExtension = file.originalname.split('.').pop()
       const fileName = `${documentType}_${timestamp}.${fileExtension}`
-      
+
       // Se tiver processoId, organiza no storage por processo
-      const filePath = processoId 
+      const filePath = processoId
         ? `${clienteId}/${processoId}/${documentType}/${fileName}`
         : `${clienteId}/${documentType}/${fileName}`
 
@@ -194,9 +194,9 @@ class ClienteController {
       })
     } catch (error: any) {
       console.error('Erro inesperado no upload:', error)
-      return res.status(500).json({ 
-        message: 'Erro ao fazer upload do documento', 
-        error: error.message 
+      return res.status(500).json({
+        message: 'Erro ao fazer upload do documento',
+        error: error.message
       })
     }
   }
@@ -218,9 +218,9 @@ class ClienteController {
       })
     } catch (error: any) {
       console.error('Erro ao buscar documentos:', error)
-      return res.status(500).json({ 
-        message: 'Erro ao buscar documentos', 
-        error: error.message 
+      return res.status(500).json({
+        message: 'Erro ao buscar documentos',
+        error: error.message
       })
     }
   }
@@ -243,9 +243,9 @@ class ClienteController {
       })
     } catch (error: any) {
       console.error('Erro ao buscar documentos do processo:', error)
-      return res.status(500).json({ 
-        message: 'Erro ao buscar documentos do processo', 
-        error: error.message 
+      return res.status(500).json({
+        message: 'Erro ao buscar documentos do processo',
+        error: error.message
       })
     }
   }
@@ -266,9 +266,9 @@ class ClienteController {
       })
     } catch (error: any) {
       console.error('Erro ao deletar documento:', error)
-      return res.status(500).json({ 
-        message: 'Erro ao deletar documento', 
-        error: error.message 
+      return res.status(500).json({
+        message: 'Erro ao deletar documento',
+        error: error.message
       })
     }
   }
@@ -295,9 +295,9 @@ class ClienteController {
       })
     } catch (error: any) {
       console.error('Erro ao atualizar status do documento:', error)
-      return res.status(500).json({ 
-        message: 'Erro ao atualizar status do documento', 
-        error: error.message 
+      return res.status(500).json({
+        message: 'Erro ao atualizar status do documento',
+        error: error.message
       })
     }
   }

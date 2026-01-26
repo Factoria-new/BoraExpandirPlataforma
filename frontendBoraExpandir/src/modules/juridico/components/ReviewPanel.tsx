@@ -23,9 +23,9 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
   const [selectedDoc, setSelectedDoc] = useState(mockDocuments[1]); // Começa com doc pendente
   const [documents, setDocuments] = useState(mockDocuments);
 
-  const handleStatusChange = (docId: string, newStatus: "approved" | "rejected") => {
+  const handleStatusChange = (docId: string, newStatus: "approved" | "rejected", isApostilled?: boolean) => {
     setDocuments(prev =>
-      prev.map(doc => (doc.id === docId ? { ...doc, status: newStatus } : doc))
+      prev.map(doc => (doc.id === docId ? { ...doc, status: newStatus, isApostilled } : doc))
     );
 
     // Auto-seleciona o próximo documento pendente
@@ -81,11 +81,10 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
                   <button
                     key={doc.id}
                     onClick={() => setSelectedDoc(doc)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
-                      selectedDoc.id === doc.id
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-border hover:bg-accent/50"
-                    }`}
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${selectedDoc.id === doc.id
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:bg-accent/50"
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       {getStatusIcon(doc.status)}
@@ -119,7 +118,7 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
           <ReviewActions
             docId={selectedDoc.id}
             currentStatus={selectedDoc.status}
-            onStatusChange={(newStatus) => handleStatusChange(selectedDoc.id, newStatus)}
+            onStatusChange={(newStatus, isApostilled) => handleStatusChange(selectedDoc.id, newStatus, isApostilled)}
           />
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { Client, Document, Process, Notification, RequiredDocument, ApprovedDocument, TranslatedDocument } from '../types'
-import { PartnerMetrics, Referral } from '../types';
+import { Client, Document, Process, Notification, RequiredDocument, ApprovedDocument, TranslatedDocument, PendingAction } from '../types'
+import { PartnerMetrics, Referral, Reminders } from '../types';
 
 // Mock data for development
 export const mockClient: Client = {
@@ -8,20 +8,30 @@ export const mockClient: Client = {
   email: 'joao.silva@email.com',
   phone: '+55 11 99999-9999',
   serviceType: 'Visto de Trabalho - Canadá',
-  paymentStatus: 'confirmed', 
+  paymentStatus: 'confirmed',
   accessGranted: true,
   isPartner: false,
   isClient: true,
   createdAt: new Date('2024-12-22'),
 }
 
+export const mockFamilyMembers = [
+  { id: '1', name: 'João Silva', type: 'Titular' },
+  { id: '2', name: 'Maria Silva', type: 'Cônjuge' },
+  { id: '3', name: 'Pedro Silva', type: 'Filho' },
+  { id: '4', name: 'Ana Silva', type: 'Filha' }
+]
+
 export const mockDocuments: Document[] = [
   {
     id: '1',
     clientId: '1',
+    memberId: '1', // João Silva
     name: 'Passaporte',
     type: 'passaporte',
     status: 'approved',
+    isApostilled: true,
+    isTranslated: true,
     uploadDate: new Date('2024-01-20'),
     fileName: 'passaporte-joao.pdf',
     fileSize: 2048000,
@@ -29,6 +39,7 @@ export const mockDocuments: Document[] = [
   {
     id: '2',
     clientId: '1',
+    memberId: '1', // João Silva
     name: 'Diploma Universitário',
     type: 'educacao',
     status: 'analyzing',
@@ -39,6 +50,7 @@ export const mockDocuments: Document[] = [
   {
     id: '3',
     clientId: '1',
+    memberId: '1', // João Silva
     name: 'Comprovante de Experiência',
     type: 'experiencia',
     status: 'rejected',
@@ -50,10 +62,37 @@ export const mockDocuments: Document[] = [
   {
     id: '4',
     clientId: '1',
+    memberId: '2', // Maria Silva (Cônjuge) - Deixando pendente para teste visual
     name: 'Certificado de Inglês',
     type: 'idioma',
     status: 'pending',
     uploadDate: new Date(),
+  },
+  {
+    id: '5',
+    clientId: '1',
+    memberId: '1',
+    name: 'Certidão de Nascimento',
+    type: 'certidao_nascimento',
+    status: 'approved',
+    isApostilled: false,
+    // isTranslated implicitly undefined/false
+    uploadDate: new Date('2024-01-15'),
+    fileName: 'certidao-nascimento-joao.pdf',
+    fileSize: 1500000,
+  },
+  {
+    id: '6',
+    clientId: '1',
+    memberId: '1',
+    name: 'Antecedentes Criminais',
+    type: 'antecedentes',
+    status: 'approved',
+    isApostilled: true,
+    isTranslated: false,
+    uploadDate: new Date('2024-01-16'),
+    fileName: 'antecedentes-joao.pdf',
+    fileSize: 1200000,
   },
 ]
 
@@ -156,6 +195,7 @@ export const mockApprovedDocuments: ApprovedDocument[] = [
     name: 'Certidão de Casamento',
     originalLanguage: 'PT',
     targetLanguages: ['EN', 'ES', 'IT'],
+    isApostilled: true,
     approvalDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
   },
   {
@@ -164,6 +204,7 @@ export const mockApprovedDocuments: ApprovedDocument[] = [
     name: 'Diploma Universitário',
     originalLanguage: 'PT',
     targetLanguages: ['EN', 'FR'],
+    isApostilled: true,
     approvalDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
   },
   {
@@ -257,5 +298,78 @@ export const mockRequiredDocuments: RequiredDocument[] = [
     processoId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',  // UUID válido do processo
     processoTipo: 'Visto de Trabalho - Canadá',
   },
+  {
+    type: 'certidao_nascimento',
+    name: 'Certidão de Nascimento',
+    description: 'Cópia simples ou autenticada',
+    required: true,
+    examples: [],
+    processoId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+    processoTipo: 'Visto de Trabalho - Canadá',
+  },
+  {
+    type: 'antecedentes',
+    name: 'Antecedentes Criminais',
+    description: 'Atestado de antecedentes criminais federal',
+    required: true,
+    examples: [],
+    processoId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+    processoTipo: 'Visto de Trabalho - Canadá',
+  },
 ]
 
+export const mockReminders: Reminders = {
+  admin: [
+    {
+      id: '1',
+      title: 'Fatura em Aberto',
+      message: 'Sua fatura de Janeiro vence em 5 dias.',
+      date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      type: 'warning',
+      actionLink: '/financeiro'
+    },
+    {
+      id: '2',
+      title: 'Atualização de Contrato',
+      message: 'Houve uma atualização nos termos de serviço.',
+      date: new Date(),
+      type: 'info'
+    }
+  ],
+  legal: [
+    {
+      id: '3',
+      title: 'Documento Pendente',
+      message: 'Precisamos da sua assinatura na procuração.',
+      date: new Date(),
+      type: 'urgent',
+      actionLink: '/juridico'
+    }
+  ],
+  commercial: [
+    {
+      id: '4',
+      title: 'Nova Parceria',
+      message: 'Confira nossos novos parceiros de câmbio com taxas exclusivas.',
+      date: new Date(),
+      type: 'success'
+    }
+  ]
+}
+
+export const mockPendingActions: PendingAction[] = [
+  {
+    id: '1',
+    title: 'Assinatura de Contrato',
+    description: 'Assinar termo de responsabilidade jurídica.',
+    deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 10 * 60 * 1000), // 2 days and 10 mins from now
+    priority: 'high'
+  },
+  {
+    id: '2',
+    title: 'Envio de Documentos Complementares',
+    description: 'Enviar cópia autenticada do RG.',
+    deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+    priority: 'medium'
+  }
+]

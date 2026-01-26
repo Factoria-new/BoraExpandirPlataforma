@@ -13,6 +13,7 @@ import {
   CheckSquare,
   ArrowRightLeft,
   GitCompareArrows,
+  Stamp,
 } from 'lucide-react'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
@@ -30,6 +31,7 @@ import { Processos } from './pages/Processos'
 import { Tarefas } from './pages/Tarefas'
 import { Movimentos } from './pages/Movimentos'
 import { RelatoriosComparativos } from './pages/RelatoriosComparativos'
+import { AdminApostilamento } from './pages/AdminApostilamento'
 
 
 export function FinanceiroApp() {
@@ -44,6 +46,7 @@ export function FinanceiroApp() {
         { label: 'Processos', to: '/financeiro/processos', icon: ClipboardList },
         { label: 'Tarefas', to: '/financeiro/tarefas', icon: CheckSquare },
         { label: 'Movimentos', to: '/financeiro/movimentos', icon: ArrowRightLeft },
+        { label: 'Apostilagem', to: '/financeiro/apostilagem', icon: Stamp },
       ],
     },
     {
@@ -79,6 +82,7 @@ export function FinanceiroApp() {
           <Route path="processos" element={<Processos />} />
           <Route path="tarefas" element={<Tarefas />} />
           <Route path="movimentos" element={<Movimentos />} />
+          <Route path="apostilagem" element={<AdminApostilamento />} />
 
           {/* Existing Financial Modules */}
           <Route path="visao-geral" element={<FinancialDashboard />} />

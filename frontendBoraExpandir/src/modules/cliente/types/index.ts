@@ -30,16 +30,42 @@ export interface PartnerMetrics {
     conversions: number;
     revenue: number;
   };
-  referralList?: Referral[];
-  referralLink?: string;
+  referralLink: string;
+  referralList: Referral[];
+}
+
+export interface Reminder {
+  id: string;
+  title: string;
+  message: string;
+  date: Date;
+  type: 'info' | 'warning' | 'urgent' | 'success';
+  actionLink?: string;
+}
+
+export interface Reminders {
+  admin: Reminder[];
+  legal: Reminder[];
+  commercial: Reminder[];
+}
+
+export interface PendingAction {
+  id: string;
+  title: string;
+  description: string;
+  deadline: Date;
+  priority: 'high' | 'medium' | 'low';
 }
 
 export interface Document {
   id: string;
   clientId: string;
+  memberId?: string;
   name: string;
   type: string;
-  status: 'pending' | 'analyzing' | 'approved' | 'rejected';
+  status: 'pending' | 'analyzing' | 'approved' | 'rejected' | 'sent_for_apostille';
+  isApostilled?: boolean;
+  isTranslated?: boolean;
   uploadDate: Date;
   rejectionReason?: string;
   fileUrl?: string;
@@ -91,6 +117,7 @@ export interface ApprovedDocument {
   name: string;
   originalLanguage: string;
   targetLanguages: string[];
+  isApostilled?: boolean;
   approvalDate: Date;
   fileUrl?: string;
 }

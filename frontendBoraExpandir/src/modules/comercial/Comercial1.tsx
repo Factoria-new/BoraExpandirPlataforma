@@ -108,11 +108,29 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [horaSelecionada, setHoraSelecionada] = useState<string>('')
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
 
+  // Exchange Rate State
+  const [exchangeRate, setExchangeRate] = useState<number>(0)
+
+  useEffect(() => {
+    // Buscar cotação do Euro apenas se for visualização do cliente
+    if (isClientView) {
+      fetch('https://api.exchangerate-api.com/v4/latest/EUR')
+        .then(res => res.json())
+        .then(data => {
+          setExchangeRate(data.rates.BRL)
+        })
+        .catch(err => {
+          console.error("Erro ao buscar cotação", err)
+          setExchangeRate(6.27) // Fallback seguro
+        })
+    }
+  }, [isClientView])
+
   // Initialize with preSelectedClient if provided
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(
     preSelectedClient ? (preSelectedClient as Cliente) : null
   )
-  const [duracaoMinutos, setDuracaoMinutos] = useState<number>(60)
+  const [duracaoMinutos, setDuracaoMinutos] = useState<number>(isClientView ? 40 : 60)
   const [emailTemporario, setEmailTemporario] = useState<string>('')
 
   // Novo fluxo: Produto -> Data -> Hora -> Lead (ou apenas Produto -> Data -> Hora se for cliente)
@@ -155,10 +173,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const agendamentoPreview = useMemo<Agendamento | null>(() => {
     if (!clienteSelecionado || !dataSelecionada || !horaSelecionada || !produtoSelecionado) return null
-    
+
     // Se o cliente não tem email, verificar se o email temporário foi preenchido
     if (!clienteSelecionado.email && !emailTemporario) return null
-    
+
     const dataIso = dataSelecionada.toISOString().split('T')[0]
     return {
       id: Date.now().toString(),
@@ -471,7 +489,15 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Produto</h3>
                 <div className="space-y-3">
-                  {mockProdutos.map((produto) => (
+                  {(isClientView ? [
+                    {
+                      id: 'consultoria-euro',
+                      nome: 'Consultoria Empresarial',
+                      descricao: 'Sessão de consultoria estratégica com especialista (Valor em Euro)',
+                      valor: 50, // EUR
+                      isEuro: true
+                    }
+                  ] : mockProdutos).map((produto: any) => (
                     <button
                       key={produto.id}
                       onClick={() => handleSelecionarProduto(produto)}
@@ -485,7 +511,16 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
+                          {produto.isEuro ? (
+                            <>
+                              <p className="text-xl font-bold text-emerald-600">€ {produto.valor.toFixed(2)}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                (Aprox. R$ {(produto.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -501,6 +536,12 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 selectedDate={dataSelecionada || undefined}
                 disabledDates={[]}
                 disablePastDates={true}
+                minDate={(() => {
+                  // Impede agendamento para o dia atual, apenas dia seguinte em diante
+                  const tomorrow = new Date()
+                  tomorrow.setDate(tomorrow.getDate() + 1)
+                  return tomorrow
+                })()}
               />
             )}
 
@@ -513,17 +554,23 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     <p className="text-sm text-gray-600 dark:text-gray-400">Escolha o início e a duração do atendimento</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {[30, 60, 90].map((duracao) => (
-                      <button
-                        key={duracao}
-                        onClick={() => setDuracaoMinutos(duracao)}
-                        className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${duracaoMinutos === duracao
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow'
-                          : 'bg-white dark:bg-neutral-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-neutral-600 hover:border-emerald-400'}`}
-                      >
-                        {duracao} min
-                      </button>
-                    ))}
+                    {isClientView ? (
+                      <div className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-3 py-2 rounded-lg text-sm font-bold border border-emerald-200 dark:border-emerald-800">
+                        40 min
+                      </div>
+                    ) : (
+                      [30, 60, 90].map((duracao) => (
+                        <button
+                          key={duracao}
+                          onClick={() => setDuracaoMinutos(duracao)}
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${duracaoMinutos === duracao
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow'
+                            : 'bg-white dark:bg-neutral-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-neutral-600 hover:border-emerald-400'}`}
+                        >
+                          {duracao} min
+                        </button>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -537,7 +584,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {HORARIOS_DISPONIVEIS.map((hora) => {
+                  {(isClientView ? [
+                    '08:00', '09:00', '10:00', '11:00',
+                    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
+                  ] : HORARIOS_DISPONIVEIS).map((hora) => {
                     const disponivel = isHorarioDisponivel(hora)
                     return (
                       <button
@@ -699,9 +749,24 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
-                    <p className="text-2xl font-bold text-emerald-600 mt-2">
-                      R$ {produtoSelecionado.valor}
-                    </p>
+
+                    {(produtoSelecionado as any).isEuro ? (
+                      <div className="mt-2">
+                        <p className="text-2xl font-bold text-emerald-600">
+                          € {produtoSelecionado.valor.toFixed(2)}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Aprox. R$ {(produtoSelecionado.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                          * Cotação estimada: €1 = R${(exchangeRate || 6.27).toFixed(2)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-emerald-600 mt-2">
+                        R$ {produtoSelecionado.valor}
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={handleRemoverProduto}
@@ -746,11 +811,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                         value={emailTemporario}
                         onChange={(e) => setEmailTemporario(e.target.value)}
                         placeholder="email@exemplo.com"
-                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 ${
-                          !emailTemporario
-                            ? 'border-red-500 dark:border-red-500 focus:ring-red-500 ring-2 ring-red-200 dark:ring-red-500/30'
-                            : 'border-gray-300 dark:border-neutral-600 focus:ring-emerald-500'
-                        }`}
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 ${!emailTemporario
+                          ? 'border-red-500 dark:border-red-500 focus:ring-red-500 ring-2 ring-red-200 dark:ring-red-500/30'
+                          : 'border-gray-300 dark:border-neutral-600 focus:ring-emerald-500'
+                          }`}
                       />
                       {!emailTemporario && (
                         <p className="mt-1 text-xs text-red-600 dark:text-red-400">

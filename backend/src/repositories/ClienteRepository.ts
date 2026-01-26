@@ -48,33 +48,33 @@ interface DocumentoRecord {
 
 class ClienteRepository {
 
-    async getClienteByWppNumber(wppNumber: string) {      
+    async getClienteByWppNumber(wppNumber: string) {
 
         const { data: cliente, error } = await supabase
-                .from('clientes')
-                .select('*')
-                .eq('whatsapp', wppNumber)
-                .single()
-        
+            .from('clientes')
+            .select('*')
+            .eq('whatsapp', wppNumber)
+            .single()
+
         if (error) {
-            throw error            
+            throw error
         }
-        
+
         return cliente
     }
 
     async getClientByParceiroId(parceiroId: string) {
-          // Ajuste o nome da coluna conforme seu schema (ex.: parceiro_id)
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('parceiro_id', parceiroId)
-        .order('created_at', { ascending: false })
+        // Ajuste o nome da coluna conforme seu schema (ex.: parceiro_id)
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('parceiro_id', parceiroId)
+            .order('created_at', { ascending: false })
 
-      if (error) {
-        throw error
-      }
-      return data
+        if (error) {
+            throw error
+        }
+        return data
     }
 
     // Buscar processos de um cliente
@@ -92,26 +92,26 @@ class ClienteRepository {
 
         return data || []
     }
-    async register(cliente: ClienteDTO) {      
+    async register(cliente: ClienteDTO) {
         const { data: createdData, error } = await supabase
-                .from('clientes')
-                .insert([cliente])
-                .select()
-                .single()
-        
+            .from('clientes')
+            .insert([cliente])
+            .select()
+            .single()
+
         if (error) {
             throw error
         }
         return createdData
     }
-    async attStatusById(id: string, status: string) {      
+    async attStatusById(id: string, status: string) {
         const { data: updatedData, error } = await supabase
-                .from('clientes')
-                .update({ status })
-                .eq('id', id)
-                .select()
-                .single()
-        
+            .from('clientes')
+            .update({ status })
+            .eq('id', id)
+            .select()
+            .single()
+
         if (error) {
             throw error
         }

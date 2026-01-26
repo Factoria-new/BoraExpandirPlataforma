@@ -22,6 +22,7 @@ interface Processo {
 
 interface DocumentUploadProps {
   clienteId: string
+  memberId?: string
   documents: Document[]
   requiredDocuments?: RequiredDocument[]  // Agora opcional - fallback caso API falhe
   onUploadSuccess?: (data: any) => void
@@ -67,9 +68,17 @@ const statusConfig = {
     borderColor: 'border-red-400',
     badge: 'destructive' as const,
   },
+  sent_for_apostille: {
+    icon: CheckCircle,
+    label: 'Enviado p/ Apostila',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100',
+    borderColor: 'border-purple-400',
+    badge: 'secondary' as const,
+  },
 }
 
-export function DocumentUpload({ clienteId, documents, requiredDocuments: fallbackDocuments = [], onUploadSuccess, onDelete }: DocumentUploadProps) {
+export function DocumentUpload({ clienteId, memberId, documents, requiredDocuments: fallbackDocuments = [], onUploadSuccess, onDelete }: DocumentUploadProps) {
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
@@ -91,13 +100,13 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
     try {
       // Usando MOCK_CLIENTE_LOGADO_ID temporariamente até implementar login
       const response = await fetch(`${API_BASE_URL}/cliente/${MOCK_CLIENTE_LOGADO_ID}/documentos-requeridos`)
-      
+
       if (!response.ok) {
         throw new Error('Erro ao buscar documentos requeridos')
       }
 
       const result = await response.json()
-      
+
       // Mapear os dados da API para o formato esperado pelo componente
       const docsFromApi: RequiredDocument[] = result.data.map((doc: any) => ({
         type: doc.type,
@@ -112,7 +121,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
 
       setRequiredDocuments(docsFromApi)
       setProcessos(result.processos || [])
-      
+
       console.log('Documentos requeridos carregados:', docsFromApi.length)
       console.log('Processos do cliente:', result.processos)
     } catch (error: any) {
@@ -142,7 +151,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
   const handleDrop = (e: React.DragEvent, documentType: string, processoId?: string, processoTipo?: string) => {
     e.preventDefault()
     setDragOver(null)
-    
+
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0) {
       setPendingUpload({
@@ -184,10 +193,22 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
       formData.append('file', pendingUpload.file)
       formData.append('clienteId', clienteId)
       formData.append('documentType', pendingUpload.documentType)
-      
+
       // Adiciona processoId se existir
       if (pendingUpload.processoId) {
         formData.append('processoId', pendingUpload.processoId)
+      }
+
+      if (memberId) {
+        formData.append('memberId', memberId)
+      }
+
+      if (memberId) {
+        formData.append('memberId', memberId)
+      }
+
+      if (memberId) {
+        formData.append('memberId', memberId)
       }
 
       const response = await fetch(`${API_BASE_URL}/cliente/uploadDoc`, {
@@ -220,7 +241,10 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
   }
 
   const getDocumentForType = (type: string) => {
-    return documents.find(doc => doc.type === type)
+    // Se memberId estiver definido, filtra também por ele.
+    // Caso contrário (retrocompatibilidade), pega qualquer documento do tipo.
+    // Mas para o novo fluxo, o memberId é crucial.
+    return documents.find(doc => doc.type === type && (memberId ? doc.memberId === memberId : true))
   }
 
   // Contadores de status
@@ -251,7 +275,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
           <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-3" />
           <p className="text-red-700 dark:text-red-300 font-medium">{loadError}</p>
-          <button 
+          <button
             onClick={fetchDocumentosRequeridos}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 mx-auto"
           >
@@ -277,15 +301,15 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
           <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">Seus Processos Ativos</h3>
           <div className="flex flex-wrap gap-2">
             {processos.map((processo) => (
-              <div 
+              <div
                 key={processo.id}
                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg border shadow-sm"
               >
                 <div className={cn(
                   "w-2 h-2 rounded-full",
                   processo.status === 'em_analise' ? 'bg-blue-500' :
-                  processo.status === 'pendente_documentos' ? 'bg-yellow-500' :
-                  processo.status === 'concluido' ? 'bg-green-500' : 'bg-gray-400'
+                    processo.status === 'pendente_documentos' ? 'bg-yellow-500' :
+                      processo.status === 'concluido' ? 'bg-green-500' : 'bg-gray-400'
                 )} />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {processo.tipoServico}
@@ -355,8 +379,8 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
           const StatusIcon = config?.icon || Upload
 
           return (
-            <div 
-              key={reqDoc.type} 
+            <div
+              key={reqDoc.type}
               id={`upload-${reqDoc.type}`}
               className={cn(
                 "relative bg-white dark:bg-gray-800 rounded-xl border-2 overflow-hidden transition-all duration-300 hover:shadow-lg group",
@@ -504,7 +528,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
                     <p className="text-xs font-medium text-gray-900 dark:text-white">
                       Arraste ou clique
                     </p>
-                    
+
                     <input
                       type="file"
                       id={`file-${reqDoc.type}`}
@@ -542,7 +566,7 @@ export function DocumentUpload({ clienteId, documents, requiredDocuments: fallba
       {/* Modal de Confirmação de Upload */}
       {showConfirmModal && pendingUpload && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div 
+          <div
             className="absolute inset-0 bg-black/50"
             onClick={!isUploading ? handleCancelUpload : undefined}
           />
