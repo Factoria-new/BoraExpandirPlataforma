@@ -70,6 +70,8 @@ model Documento {
   
   // Status e análise
   status          StatusDocumento @default(PENDING)
+  apostilado      Boolean         @default(false)
+  traduzido       Boolean         @default(false)
   motivoRejeicao  String?         @map("motivo_rejeicao")
   analisadoPor    String?         @db.Uuid @map("analisado_por") // ID do usuário que analisou
   analisadoEm     DateTime?       @map("analisado_em")

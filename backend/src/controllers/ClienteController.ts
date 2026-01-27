@@ -126,6 +126,8 @@ class ClienteController {
       console.log('req.body:', req.body)
       console.log('clienteId:', clienteId)
       console.log('processoId:', processoId)
+      console.log('memberId:', req.body.memberId)
+      console.log('memberName:', req.body.memberName)
       console.log('documentType:', documentType)
       console.log('file:', file ? {
         originalname: file.originalname,
@@ -148,13 +150,25 @@ class ClienteController {
 
       // Gerar nome único para o arquivo
       const timestamp = Date.now()
+      const memberId = req.body.memberId
+      const memberName = req.body.memberName
       const fileExtension = file.originalname.split('.').pop()
       const fileName = `${documentType}_${timestamp}.${fileExtension}`
 
-      // Se tiver processoId, organiza no storage por processo
-      const filePath = processoId
-        ? `${clienteId}/${processoId}/${documentType}/${fileName}`
-        : `${clienteId}/${documentType}/${fileName}`
+      // Construir o caminho do arquivo com memberId se disponível
+      let filePath = `${clienteId}`
+
+      if (processoId) {
+        filePath += `/${processoId}`
+      }
+
+      if (memberName) {
+        filePath += `/${memberName}`
+      } else if (memberId) {
+        filePath += `/${memberId}`
+      }
+
+      filePath += `/${documentType}/${fileName}`
 
       console.log('FilePath gerado:', filePath)
 

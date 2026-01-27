@@ -27,6 +27,11 @@ export function DocumentUploadFlow({
         formData.append('documentType', documentType)
         formData.append('memberId', memberId)
 
+        const member = mockFamilyMembers.find(m => m.id === memberId)
+        if (member) {
+            formData.append('memberName', member.name)
+        }
+
         const response = await fetch(`${API_BASE_URL}/cliente/uploadDoc`, {
             method: 'POST',
             body: formData
