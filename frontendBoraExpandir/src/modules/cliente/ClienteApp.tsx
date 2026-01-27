@@ -13,13 +13,14 @@ import Parceiro from './components/Parceiro'
 import { ClienteAgendamento } from './components/ClienteAgendamento'
 import {
   mockClient,
-  mockDocuments,
+  // mockDocuments, // Removendo uso direto aqui para usar via API
   mockProcess,
   mockNotifications,
   mockRequiredDocuments,
   mockApprovedDocuments,
   mockTranslatedDocuments,
   mockPendingActions,
+  mockFamilyMembers, // Import necessary for mapping
 } from './lib/mock-data'
 import { Document, Notification, ApprovedDocument, TranslatedDocument } from './types'
 import { Apostilamento } from './components/Apostilamento'
@@ -31,7 +32,84 @@ import { RequiredActionModal } from './components/RequiredActionModal'
 export function ClienteApp() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments)
+  const [documents, setDocuments] = useState<Document[]>([])
+  
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+  // Helper to sanitize name (same as backend)
+  const sanitizeName = (name: string) => {
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+  }
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/documentos`)
+      if (!response.ok) throw new Error('Falha ao buscar documentos')
+      
+      const result = await response.json()
+      const apiDocs = result.data || []
+
+      // Map API documents to frontend format and infer memberId
+      const mappedDocs: Document[] = apiDocs.map((doc: any) => {
+        // Infer memberId from storage_path
+        // Path format: clienteId/MemberName/type/file
+        let memberId = mockClient.id // Default to main client
+        
+        if (doc.storage_path) {
+          const parts = doc.storage_path.split('/')
+          // parts[0] is clienteId
+          // parts[1] might be memberName (sanitized) or processId
+          // If we have processId logic, it might be deeper. 
+          // Based on our controller logic: 
+          // If memberName: clienteId/SafeMemberName/docType/file
+          // If processId + memberName: clienteId/processId/SafeMemberName/docType/file
+           
+          // Let's try to match parts against sanitized member names
+          for (const part of parts) {
+            const member = mockFamilyMembers.find(m => sanitizeName(m.name) === part)
+            if (member) {
+              memberId = member.id
+              break
+            }
+          }
+        }
+
+        return {
+          id: doc.id,
+          clientId: doc.cliente_id,
+          memberId: memberId,
+          name: mockRequiredDocuments.find(r => r.type === doc.tipo)?.name || doc.tipo,
+          type: doc.tipo,
+          status: doc.status ? doc.status.toLowerCase() : 'pending',
+          isApostilled: doc.apostilado,
+          isTranslated: doc.traduzido,
+          uploadDate: new Date(doc.criado_em),
+          rejectionReason: doc.motivo_rejeicao,
+          fileUrl: doc.public_url,
+          fileName: doc.nome_arquivo,
+          fileSize: doc.tamanho,
+        }
+      })
+
+      // Combine with mocks if API returns empty? Or just use API?
+      // User wants to see their uploads.
+      setDocuments(mappedDocs)
+
+    } catch (error) {
+      console.error('Erro ao buscar documentos:', error)
+      // Fallback to mocks on error?
+      // setDocuments(mockDocuments) 
+    }
+  }
+
+  useEffect(() => {
+    fetchDocuments()
+  }, [])
 
   // Create notifications from pending actions
   const pendingActionNotifications: Notification[] = mockPendingActions.map(action => ({
@@ -379,11 +457,20 @@ export function ClienteApp() {
                     fileUrl: data.publicUrl,
                   }
                   setDocuments(prev => {
-                    const filtered = prev.filter(doc => doc.type !== data.documentType)
+                    // Remove any existing document of the same type/member
+                    // Now better filter by id or type+member
+                    const filtered = prev.filter(doc => !(doc.type === data.documentType && doc.memberId === data.memberId))
                     return [...filtered, newDocument]
                   })
                 }}
-                onDelete={handleDeleteDocument}
+                onDelete={async (documentId) => {
+                  try {
+                     await fetch(`${API_BASE_URL}/cliente/documento/${documentId}`, { method: 'DELETE' })
+                     handleDeleteDocument(documentId)
+                  } catch (e) {
+                    console.error("Delete failed", e)
+                  }
+                }}
               />
             }
           />

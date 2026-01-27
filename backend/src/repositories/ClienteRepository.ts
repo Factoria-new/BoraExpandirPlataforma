@@ -24,6 +24,7 @@ interface CreateDocumentoParams {
     publicUrl?: string
     contentType?: string
     tamanho?: number
+    status?: 'PENDING' | 'ANALYZING' | 'APPROVED' | 'REJECTED'
 }
 
 // Interface do documento retornado
@@ -158,7 +159,7 @@ class ClienteRepository {
                 public_url: params.publicUrl || null,
                 content_type: params.contentType || null,
                 tamanho: params.tamanho || null,
-                status: 'PENDING',
+                status: params.status || 'PENDING',
                 atualizado_em: new Date().toISOString()
             }])
             .select()

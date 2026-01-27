@@ -113,17 +113,7 @@ const Index = () => {
       <Sidebar groups={sidebarGroups} />
 
       <main className="ml-64 p-6">
-        {/* Badge de Supervisor */}
-        {USUARIO_LOGADO.isSupervisor && (
-          <div className="mb-4 flex items-center gap-2">
-            <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
-              👑 Supervisor
-            </span>
-            <span className="text-sm text-muted-foreground">
-              Logado como {USUARIO_LOGADO.nome}
-            </span>
-          </div>
-        )}
+
 
         {selectedProcess && (
           <div className="border-b bg-muted/30 p-4 -m-6 mb-6">

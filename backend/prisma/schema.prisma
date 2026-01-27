@@ -58,6 +58,7 @@ model Documento {
   
   // Relacionamento com o cliente (UUID do Supabase)
   clienteId       String          @db.Uuid @map("cliente_id")
+  memberId        String?         @map("member_id") // ID do membro familiar (pode ser string simples ou UUID)
   
   // Informações do arquivo
   tipo            String          // Tipo do documento (passport, identity, proof_of_address, etc.)

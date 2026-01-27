@@ -163,7 +163,16 @@ class ClienteController {
       }
 
       if (memberName) {
-        filePath += `/${memberName}`
+        // Sanitize memberName to prevent "Invalid key" errors in Supabase Storage
+        // Remove accents, special characters and replace spaces
+        const safeMemberName = memberName
+          .normalize('NFD') // Decompose combined graphemes (e.g. 'é' -> 'e' + '´')
+          .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
+          .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars
+          .trim()
+          .replace(/\s+/g, '_'); // Replace spaces with underscore
+
+        filePath += `/${safeMemberName}`
       } else if (memberId) {
         filePath += `/${memberId}`
       }
@@ -189,7 +198,8 @@ class ClienteController {
         storagePath: filePath,
         publicUrl: uploadResult.publicUrl,
         contentType: file.mimetype,
-        tamanho: file.size
+        tamanho: file.size,
+        status: 'ANALYZING'
       })
 
       console.log('Documento registrado no banco:', documentoRecord.id)
