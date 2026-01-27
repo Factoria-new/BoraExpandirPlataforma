@@ -30,8 +30,9 @@ export interface JuridicoDocument {
   name: string;
   type: string;
   url: string;
-  status: 'analyzing' | 'rejected' | 'waiting_apostille' | 'waiting_translation' | 'approved';
+  status: 'analyzing' | 'rejected' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
+  // ... rest of interface
   uploadDate: string;
   history: {
     stage: AnalysisStage;
@@ -102,12 +103,21 @@ export function ProcessAnalysis({
       setRejectModalOpen(true);
     } 
     else if (action === 'next') {
-      // Avançar etapa
+      // Avançar etapa (Usuario validou que está OK para a fase atual)
       if (selectedDoc.currentStage === 'initial_analysis') {
-        updates = { currentStage: 'apostille_check' };
+        // Saiu da análise técnica, vai verificar apostilamento
+        updates = { 
+            currentStage: 'apostille_check',
+            status: 'analyzing_apostille' 
+        };
       } else if (selectedDoc.currentStage === 'apostille_check') {
-        updates = { currentStage: 'translation_check' };
+        // Saiu do apostilamento (está apostilado), vai verificar tradução
+        updates = { 
+            currentStage: 'translation_check',
+            status: 'analyzing_translation'
+        };
       } else if (selectedDoc.currentStage === 'translation_check') {
+        // Saiu da tradução (está traduzido), finaliza
         updates = { 
           currentStage: 'completed', 
           status: 'approved' 

@@ -307,11 +307,29 @@ class ClienteController {
         return res.status(400).json({ message: 'documentoId é obrigatório' })
       }
 
-      if (!status || !['PENDING', 'ANALYZING', 'APPROVED', 'REJECTED'].includes(status)) {
-        return res.status(400).json({ message: 'status é obrigatório e deve ser PENDING, ANALYZING, APPROVED ou REJECTED' })
+      if (!status || !['PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE', 'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'APPROVED', 'REJECTED'].includes(status)) {
+        return res.status(400).json({ message: 'Status inválido' })
       }
 
-      const documento = await ClienteRepository.updateDocumentoStatus(documentoId, status, motivoRejeicao, analisadoPor)
+      // Lógica de side-effects (atualizar flags booleanas baseado na etapa)
+      let apostilado: boolean | undefined = undefined;
+      let traduzido: boolean | undefined = undefined;
+
+      if (['WAITING_TRANSLATION', 'ANALYZING_TRANSLATION'].includes(status)) {
+        apostilado = true;
+      } else if (status === 'APPROVED') {
+        apostilado = true;
+        traduzido = true;
+      }
+
+      const documento = await ClienteRepository.updateDocumentoStatus(
+        documentoId, 
+        status, 
+        motivoRejeicao, 
+        analisadoPor,
+        apostilado,
+        traduzido
+      )
 
       return res.status(200).json({
         message: 'Status do documento atualizado com sucesso',

@@ -46,10 +46,14 @@ model Notificacao {
 
 // Enumeração para status do documento
 enum StatusDocumento {
-  PENDING     // Aguardando análise
-  ANALYZING   // Em análise
-  APPROVED    // Aprovado
-  REJECTED    // Rejeitado
+  PENDING               // Aguardando análise
+  ANALYZING             // Em análise técnica
+  WAITING_APOSTILLE     // Aguardando apostilamento (cliente)
+  ANALYZING_APOSTILLE   // Validando apostilamento (jurídico)
+  WAITING_TRANSLATION   // Aguardando tradução (cliente)
+  ANALYZING_TRANSLATION // Validando tradução (jurídico)
+  APPROVED              // Aprovado
+  REJECTED              // Rejeitado
 }
 
 // Modelo para armazenar documentos dos clientes

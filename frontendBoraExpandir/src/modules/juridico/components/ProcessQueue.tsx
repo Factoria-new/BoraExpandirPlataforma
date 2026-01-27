@@ -1,43 +1,11 @@
-import { useState } from 'react'
-import { Clock, FileText, User, ChevronRight, Folder, Users, ArrowBigLeft, ChevronLeft } from "lucide-react";
+import { useState, useEffect } from 'react'
+import { Clock, FileText, User, ChevronRight, Folder, ChevronLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from "../../cliente/components/ui/card";
-import { mockFamilyMembers } from '../../cliente/lib/mock-data';
-import { ProcessAnalysis, JuridicoDocument } from './ProcessAnalysis';
+import { ProcessAnalysis, JuridicoDocument, AnalysisStage } from './ProcessAnalysis';
 
-const mockJuridicoDocs: JuridicoDocument[] = [
-  {
-    id: '1',
-    name: 'Passaporte',
-    type: 'passaporte',
-    url: '',
-    status: 'analyzing',
-    currentStage: 'initial_analysis',
-    uploadDate: '2024-01-20',
-    history: []
-  },
-  {
-    id: '2',
-    name: 'Certidão de Nascimento',
-    type: 'certidao',
-    url: '',
-    status: 'waiting_apostille',
-    currentStage: 'apostille_check',
-    uploadDate: '2024-01-22',
-    history: []
-  },
-  {
-    id: '3',
-    name: 'Antecedentes Criminais',
-    type: 'antecedentes',
-    url: '',
-    status: 'waiting_translation',
-    currentStage: 'translation_check',
-    uploadDate: '2024-01-25',
-    history: []
-  }
-];
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export interface Process {
   id: string;
@@ -56,73 +24,20 @@ export interface Process {
   documentsTranslated: number;
 }
 
-// Dados mock para demonstração
-const mockProcesses: Process[] = [
-  {
-    id: "1",
-    clientName: "João Silva",
-    clientId: "CLI001",
-    serviceType: "Visto D7",
-    currentStage: "2",
-    totalStages: 4,
-    status: "new",
-    waitingTime: 2,
-    documentsTotal: 12,
-    documentsApproved: 3,
-    documentsPending: 5,
-    documentsAnalyzing: 4,
-    documentsApostilled: 2,
-    documentsTranslated: 1
-  },
-  {
-    id: "2",
-    clientName: "Maria Santos",
-    clientId: "CLI002",
-    serviceType: "Nómada Digital",
-    currentStage: "1",
-    totalStages: 4,
-    status: "pending_client",
-    waitingTime: 28,
-    documentsTotal: 6,
-    documentsApproved: 2,
-    documentsPending: 4,
-    documentsAnalyzing: 0,
-    documentsApostilled: 0,
-    documentsTranslated: 0
-  },
-  {
-    id: "3",
-    clientName: "Carlos Oliveira",
-    clientId: "CLI003",
-    serviceType: "Visto D2",
-    currentStage: "3",
-    totalStages: 4,
-    status: "ready",
-    waitingTime: 1,
-    documentsTotal: 8,
-    documentsApproved: 8,
-    documentsPending: 0,
-    documentsAnalyzing: 0,
-    documentsApostilled: 4,
-    documentsTranslated: 3
-  },
-  {
-      id: "4",
-      clientName: "Ana Paula Souza",
-      clientId: "CLI004",
-      serviceType: "Cidadania Portuguesa",
-      currentStage: "1",
-      totalStages: 5,
-      status: "new",
-      waitingTime: 5,
-      documentsTotal: 15,
-      documentsApproved: 0,
-      documentsPending: 10,
-      documentsAnalyzing: 5,
-      documentsApostilled: 0,
-      documentsTranslated: 0
-    },
-];
+interface BackendProcess {
+    id: string;
+    client_id: string;
+    client?: {
+        id: string;
+        full_name: string;
+        email: string;
+    };
+    tipo_servico: string;
+    status: string;
+    etapa_atual: number;
+    criado_em: string;
+    // ... add other fields as needed
+}
 
 const StatusBadge = ({ status }: { status: Process["status"] }) => {
   const variants = {
@@ -131,30 +46,198 @@ const StatusBadge = ({ status }: { status: Process["status"] }) => {
     ready: { label: "Pronto", variant: "success" as const },
   };
 
-  const { label, variant } = variants[status];
+  const { label, variant } = variants[status] || { label: status, variant: "secondary" };
   return <Badge variant={variant} className="absolute top-3 right-3">{label}</Badge>;
 };
-
-
 
 interface ProcessQueueProps {
   onSelectProcess?: (process: Process) => void;
 }
 
 export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
+  const [processes, setProcesses] = useState<Process[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<Process | null>(null);
-  const [selectedMember, setSelectedMember] = useState<{name: string} | null>(null);
+  const [selectedFolderDocs, setSelectedFolderDocs] = useState<any[]>([]); // Raw backend documents
+  const [selectedMember, setSelectedMember] = useState<{name: string, id?: string} | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch Processes
+  useEffect(() => {
+    const fetchProcesses = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE_URL}/juridico/processos`);
+            if (!response.ok) throw new Error('Falha ao buscar processos');
+            const result = await response.json();
+            const data: BackendProcess[] = result.data || [];
+
+            // Map backend to frontend Process
+            const mapped: Process[] = data.map(p => ({
+                id: p.id,
+                clientName: p.client?.full_name || 'Cliente Desconhecido',
+                clientId: p.client?.id || p.client_id,
+                serviceType: p.tipo_servico,
+                currentStage: p.etapa_atual ? p.etapa_atual.toString() : '1',
+                totalStages: 4, // Mock or derive
+                status: 'new', // Logic needed to determine status from p.status
+                waitingTime: 0, // Mock
+                documentsTotal: 0, // Need to fetch document counts separately or inclusion in process list
+                documentsApproved: 0, 
+                documentsPending: 0,
+                documentsAnalyzing: 0,
+                documentsApostilled: 0,
+                documentsTranslated: 0
+            }));
+            
+            // For demo purposes, we might want to fetch document stats for each process here?
+            // Or just fetch mock processes if the backend list is empty/limited
+            if (mapped.length === 0) {
+                 // Fallback to mock if empty? No, user wants real data. 
+                 // But if DB is empty, it shows nothing.
+            }
+            setProcesses(mapped);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchProcesses();
+  }, []);
+
+  // Fetch Documents when Folder Selected
+  useEffect(() => {
+    if (!selectedFolder) return;
+
+    const fetchDocs = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/cliente/${selectedFolder.clientId}/documentos`);
+            if (!response.ok) throw new Error('Falha ao buscar documentos');
+            const result = await response.json();
+            const docs = result.data || [];
+            setSelectedFolderDocs(docs);
+            
+            // Recalculate stats for the selected folder (optional if we want to update the view)
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    fetchDocs();
+  }, [selectedFolder]);
+
+
+  // Derived Members from Documents
+  const members = selectedFolderDocs.reduce((acc: any[], doc: any) => {
+      // Logic to extract member name (e.g. from storage_path or memberId)
+      // Assuming storage_path: clientID/MemberName/type/file
+      let memberName = selectedFolder?.clientName || 'Titular';
+      let memberType = 'Titular';
+
+      if (doc.member_id) {
+          // If we had member names map... 
+          // For now try to parse from storage_path if name not available?
+           if (doc.storage_path) {
+              const parts = doc.storage_path.split('/');
+              if (parts.length > 2) {
+                  // Removing underscores might be nice
+                  memberName = parts[1].replace(/_/g, ' '); 
+              }
+          }
+      } else if (doc.storage_path) {
+          const parts = doc.storage_path.split('/');
+          if (parts.length > 2) {
+              memberName = parts[1].replace(/_/g, ' ');
+          }
+      }
+
+      const existing = acc.find(m => m.name === memberName);
+      const isPending = doc.status === 'PENDING' || !doc.status;
+      const isAnalyzing = doc.status === 'ANALYZING' || doc.status?.startsWith('ANALYZING_'); 
+
+      if (existing) {
+          existing.docs++;
+          if (isPending) existing.pending++;
+          existing.status.push(doc.status);
+      } else {
+           acc.push({
+               name: memberName,
+               type: memberType, // Logic to determine type?
+               docs: 1,
+               pending: isPending ? 1 : 0,
+               status: [doc.status],
+               id: doc.member_id // Store member ID if available
+           });
+      }
+      return acc;
+  }, []);
+
+  const getFilteredDocsForMember = (memberName: string): JuridicoDocument[] => {
+      // Filter raw docs and map to JuridicoDocument
+       return selectedFolderDocs
+        .filter(doc => {
+            let docMember = selectedFolder?.clientName || 'Titular';
+             if (doc.storage_path) {
+                const parts = doc.storage_path.split('/');
+                if (parts.length > 2) docMember = parts[1].replace(/_/g, ' ');
+            }
+            return docMember === memberName;
+        })
+        .map(doc => {
+            // Map Backend Status directly to lower case or specific logic
+            const status = doc.status ? doc.status.toLowerCase() : 'pending';
+            
+            let stage: AnalysisStage = 'initial_analysis';
+            if (status.includes('apostille')) stage = 'apostille_check';
+            if (status.includes('translation')) stage = 'translation_check';
+            if (status === 'approved') stage = 'completed';
+
+            return {
+                id: doc.id,
+                name: doc.nome_original || doc.tipo,
+                type: doc.tipo,
+                url: doc.public_url || '',
+                status: status as any,
+                currentStage: stage,
+                uploadDate: new Date(doc.criado_em).toLocaleDateString(),
+                history: []
+            }
+        });
+  };
 
   if (selectedMember && selectedFolder) {
+    const memberDocs = getFilteredDocsForMember(selectedMember.name);
+    
     return (
       <ProcessAnalysis 
         clientName={selectedFolder.clientName}
         memberName={selectedMember.name}
-        documents={mockJuridicoDocs} // In real app, filter by member/process
+        documents={memberDocs} 
         onBack={() => setSelectedMember(null)}
-        onUpdateDocument={(id, updates) => {
-            console.log('Update doc', id, updates)
-            // Here update state/backend
+        onUpdateDocument={async (id, updates) => {
+             // Optimistic update
+             const newStatus = updates.status?.toUpperCase();
+             try {
+                // Determine rejection reason
+                // In updates we might have reason if we passed it in
+                // But ProcessAnalysis only calls onUpdateDocument(id, {status...})
+                // The actual backend call needs to happen here.
+                
+                await fetch(`${API_BASE_URL}/cliente/documento/${id}/status`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        status: newStatus,
+                        motivoRejeicao: updates.status === 'rejected' ? 'Rejeitado pelo jurídico' : undefined // Would need to pass reason from component
+                    })
+                });
+
+                // Update local list
+                 const updatedRaw = selectedFolderDocs.map(d => d.id === id ? {...d, status: newStatus} : d);
+                 setSelectedFolderDocs(updatedRaw);
+
+             } catch (e) {
+                 console.error("Failed to update status", e);
+             }
         }}
       />
     )
@@ -184,13 +267,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Mocking family members as sub-folders */}
-                {/* Normally we would filter members by this process ID */}
-                {[
-                    { name: selectedFolder.clientName, type: "Titular", docs: 5, pending: 2 },
-                    { name: "Maria " + selectedFolder.clientName.split(' ')[1], type: "Cônjuge", docs: 3, pending: 1 },
-                    { name: "Pedro " + selectedFolder.clientName.split(' ')[1], type: "Filho", docs: 2, pending: 0 }
-                ].map((member, idx) => (
+                {members.length > 0 ? members.map((member, idx) => (
                      <Card 
                         key={idx}
                         className="p-6 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-blue-500 group relative overflow-hidden"
@@ -226,7 +303,11 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                              <ChevronRight className="h-4 w-4" />
                         </Button>
                      </Card>
-                ))}
+                )) : (
+                    <div className="col-span-full py-12 text-center text-muted-foreground">
+                        Nenhum documento encontrado para este processo.
+                    </div>
+                )}
             </div>
         </div>
     )
@@ -242,14 +323,15 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
           </p>
         </div>
         <div className="flex gap-3">
+             {loading && <span className="text-sm text-muted-foreground animate-pulse">Carregando...</span>}
             <Badge variant="outline" className="text-base px-4 py-2">
-            {mockProcesses.length} processos
+            {processes.length} processos
             </Badge>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {mockProcesses.map((process) => (
+        {processes.map((process) => (
           <Card
             key={process.id}
             className="group relative cursor-pointer hover:shadow-lg transition-all duration-300 border-t-4 border-t-primary overflow-visible"
@@ -264,7 +346,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     </div>
                     <h3 className="font-bold text-lg leading-tight mb-1">{process.clientName}</h3>
                      <p className="text-sm text-muted-foreground">{process.serviceType}</p>
-                     <p className="text-xs text-muted-foreground mt-1 font-mono">ID: {process.clientId}</p>
+                     <p className="text-xs text-muted-foreground mt-1 font-mono">ID: {process.clientId.substring(0,8)}...</p>
                 </div>
 
                 <div className="space-y-3 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
@@ -302,6 +384,11 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
           </Card>
         ))}
+        {!loading && processes.length === 0 && (
+            <div className="col-span-full py-12 text-center text-muted-foreground">
+                Nenhum processo encontrado na fila.
+            </div>
+        )}
       </div>
     </div>
   );

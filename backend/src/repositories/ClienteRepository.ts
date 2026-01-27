@@ -24,7 +24,7 @@ interface CreateDocumentoParams {
     publicUrl?: string
     contentType?: string
     tamanho?: number
-    status?: 'PENDING' | 'ANALYZING' | 'APPROVED' | 'REJECTED'
+    status?: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED'
 }
 
 // Interface do documento retornado
@@ -39,7 +39,7 @@ interface DocumentoRecord {
     public_url: string | null
     content_type: string | null
     tamanho: number | null
-    status: 'PENDING' | 'ANALYZING' | 'APPROVED' | 'REJECTED'
+    status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED'
     motivo_rejeicao: string | null
     analisado_por: string | null
     analisado_em: string | null
@@ -244,7 +244,14 @@ class ClienteRepository {
     }
 
     // Atualizar status do documento
-    async updateDocumentoStatus(documentoId: string, status: 'PENDING' | 'ANALYZING' | 'APPROVED' | 'REJECTED', motivoRejeicao?: string, analisadoPor?: string): Promise<DocumentoRecord> {
+    async updateDocumentoStatus(
+        documentoId: string, 
+        status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED', 
+        motivoRejeicao?: string, 
+        analisadoPor?: string,
+        apostilado?: boolean,
+        traduzido?: boolean
+    ): Promise<DocumentoRecord> {
         const updateData: any = {
             status,
             atualizado_em: new Date().toISOString()
@@ -257,6 +264,14 @@ class ClienteRepository {
         if (analisadoPor) {
             updateData.analisado_por = analisadoPor
             updateData.analisado_em = new Date().toISOString()
+        }
+
+        if (apostilado !== undefined) {
+            updateData.apostilado = apostilado
+        }
+
+        if (traduzido !== undefined) {
+            updateData.traduzido = traduzido
         }
 
         const { data, error } = await supabase

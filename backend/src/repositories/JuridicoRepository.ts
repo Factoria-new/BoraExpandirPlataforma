@@ -72,11 +72,10 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 *,
-                clientes (
+                client:profiles!client_id (
                     id,
-                    nome,
-                    email,
-                    whatsapp
+                    full_name,
+                    email
                 )
             `)
             .order('created_at', { ascending: false })
@@ -126,11 +125,10 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 *,
-                clientes (
+                client:profiles!client_id (
                     id,
-                    nome,
-                    email,
-                    whatsapp
+                    full_name,
+                    email
                 )
             `)
             .is('responsavel_id', null)
