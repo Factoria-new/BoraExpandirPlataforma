@@ -16,10 +16,10 @@ export const mockClient: Client = {
 }
 
 export const mockFamilyMembers = [
-  { id: '1', name: 'João Silva', type: 'Titular' },
-  { id: '2', name: 'Maria Silva', type: 'Cônjuge' },
-  { id: '3', name: 'Pedro Silva', type: 'Filho' },
-  { id: '4', name: 'Ana Silva', type: 'Filha' }
+  { id: 'f1e2d3c4-b5a6-7890-9876-543210fedcba', name: 'João Silva', type: 'Titular' },
+  { id: '1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d', name: 'Maria Silva', type: 'Cônjuge' },
+  { id: '9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d', name: 'Pedro Silva', type: 'Filho' },
+  { id: '0f1e2d3c-4b5a-6789-0987-654321fedcba', name: 'Ana Silva', type: 'Filha' }
 ]
 
 export const mockDocuments: Document[] = [
@@ -97,7 +97,7 @@ export const mockDocuments: Document[] = [
 ]
 
 export const mockProcess: Process = {
-  id: '1',
+  id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
   clientId: '1',
   serviceType: 'Visto de Trabalho - Canadá',
   currentStep: 2,

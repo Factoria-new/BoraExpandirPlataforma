@@ -25,6 +25,7 @@ interface CreateDocumentoParams {
     contentType?: string
     tamanho?: number
     status?: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED'
+    dependenteId?: string
 }
 
 // Interface do documento retornado
@@ -91,6 +92,26 @@ class ClienteRepository {
             throw error
         }
 
+        return data || []
+    }
+
+    // Buscar dependentes de um cliente
+    async getDependentesByClienteId(clienteId: string) {
+        console.log('Repository: Buscando dependentes para clienteId:', clienteId)
+        
+        const { data, error } = await supabase
+            .from('dependentes')
+            .select('id, nome_completo, parentesco')
+            .eq('cliente_id', clienteId)
+            //.eq('status', 'ativo') // Comentado para debug - trazer todos
+            .order('nome_completo', { ascending: true })
+
+        if (error) {
+            console.error('Erro ao buscar dependentes do cliente:', error)
+            throw error
+        }
+
+        console.log('Repository: Dependentes encontrados:', data?.length, data)
         return data || []
     }
     async register(cliente: ClienteDTO) {
@@ -160,6 +181,7 @@ class ClienteRepository {
                 content_type: params.contentType || null,
                 tamanho: params.tamanho || null,
                 status: params.status || 'PENDING',
+                dependente_id: params.dependenteId || null,
                 atualizado_em: new Date().toISOString()
             }])
             .select()

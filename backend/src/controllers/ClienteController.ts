@@ -86,6 +86,55 @@ class ClienteController {
     }
   }
 
+  // GET /cliente/:clienteId/dependentes
+  async getDependentes(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      console.log('Controller: Recebendo request getDependentes para:', clienteId)
+      const dependentes = await ClienteRepository.getDependentesByClienteId(clienteId)
+
+      return res.status(200).json({
+        message: 'Dependentes recuperados com sucesso',
+        data: dependentes
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar dependentes:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar dependentes',
+        error: error.message
+      })
+    }
+  }
+
+  // GET /cliente/:clienteId/processos
+  async getProcessos(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      const processos = await ClienteRepository.getProcessosByClienteId(clienteId)
+
+      return res.status(200).json({
+        message: 'Processos recuperados com sucesso',
+        data: processos
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar processos:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar processos',
+        error: error.message
+      })
+    }
+  }
+
   async register(req: any, res: any) {
     try {
 
@@ -151,31 +200,24 @@ class ClienteController {
       // Gerar nome único para o arquivo
       const timestamp = Date.now()
       const memberId = req.body.memberId
-      const memberName = req.body.memberName
+      // memberName removido pois agora usamos apenas IDs na estrutura de pastas
       const fileExtension = file.originalname.split('.').pop()
       const fileName = `${documentType}_${timestamp}.${fileExtension}`
 
-      // Construir o caminho do arquivo com memberId se disponível
-      let filePath = `${clienteId}`
+      // Construir o caminho do arquivo usando IDs para consistência e privacidade
+      // Estrutura: processoId/memberId/documentType/fileName
+      let filePath = ''
 
       if (processoId) {
-        filePath += `/${processoId}`
+        filePath += `${processoId}/`
+      } else {
+        // Fallback caso não tenha processo (embora deveria ter)
+        filePath += `sem_processo/`
       }
 
-      if (memberName) {
-        // Sanitize memberName to prevent "Invalid key" errors in Supabase Storage
-        // Remove accents, special characters and replace spaces
-        const safeMemberName = memberName
-          .normalize('NFD') // Decompose combined graphemes (e.g. 'é' -> 'e' + '´')
-          .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
-          .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars
-          .trim()
-          .replace(/\s+/g, '_'); // Replace spaces with underscore
-
-        filePath += `/${safeMemberName}`
-      } else if (memberId) {
-        filePath += `/${memberId}`
-      }
+      // Se tiver memberId, usa ele. Se não, usa o clienteId (titular)
+      const targetId = memberId || clienteId
+      filePath += `${targetId}`
 
       filePath += `/${documentType}/${fileName}`
 
@@ -199,7 +241,8 @@ class ClienteController {
         publicUrl: uploadResult.publicUrl,
         contentType: file.mimetype,
         tamanho: file.size,
-        status: 'ANALYZING'
+        status: 'ANALYZING',
+        dependenteId: (memberId && memberId !== clienteId) ? memberId : undefined // Só associa se for um dependente real, não o titular
       })
 
       console.log('Documento registrado no banco:', documentoRecord.id)

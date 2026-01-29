@@ -38,6 +38,8 @@ cliente.get('/clientesbyparceiro/:parceiroId', ClienteController.getByParceiro.b
 
 // Rotas de documentos
 cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
+cliente.get('/:clienteId/dependentes', ClienteController.getDependentes.bind(ClienteController))
+cliente.get('/:clienteId/processos', ClienteController.getProcessos.bind(ClienteController))
 cliente.get('/:clienteId/documentos', ClienteController.getDocumentos.bind(ClienteController))
 cliente.get('/processo/:processoId/documentos', ClienteController.getDocumentosByProcesso.bind(ClienteController))
 cliente.delete('/documento/:documentoId', ClienteController.deleteDocumento.bind(ClienteController))

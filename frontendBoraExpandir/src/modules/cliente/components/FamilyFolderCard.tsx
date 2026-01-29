@@ -89,116 +89,146 @@ export function FamilyFolderCard({
 }: FamilyFolderCardProps) {
   const [uploadingType, setUploadingType] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  
+  // Modal States
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [pendingUpload, setPendingUpload] = useState<{
+    file: File
+    documentType: string
+    documentName: string
+  } | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Filter documents for this member
   const memberDocs = useMemo(() => documents.filter(d => d.memberId === member.id), [documents, member.id])
 
-  // Check if member has sent ANY documents (first time flow)
-  const hasSentDocuments = memberDocs.length > 0
+
+  // Determine the stage of a document
+  const getDocStage = (doc: ClientDocument) => {
+    if (doc.status === 'rejected') return 'rejected'
+    if (doc.status === 'pending') return 'analyzing'
+    if (doc.status === 'approved') {
+        if (!doc.isApostilled) return 'apostille'
+        if (!doc.isTranslated) return 'translation'
+        return 'completed'
+    }
+    return 'analyzing'
+  }
+
+  const getDocumentsForStage = (stageId: string) => {
+    return memberDocs
+      .filter(doc => getDocStage(doc) === stageId)
+      .map(doc => {
+         const reqDoc = requiredDocuments.find(r => r.type === doc.type)
+         return {
+             type: doc.type,
+             name: reqDoc ? reqDoc.name : (doc.fileName || doc.type),
+             description: reqDoc?.description,
+             _document: doc,
+             required: !!reqDoc
+         }
+    })
+  }
+
+  // Calculate pending documents (required but not uploaded)
+  const pendingDocs = useMemo(() => {
+      const uploadedTypes = new Set(memberDocs.map(d => d.type))
+      return requiredDocuments
+        .filter(req => !uploadedTypes.has(req.type))
+        .map(req => ({
+          ...req,
+          required: true
+        }))
+  }, [memberDocs, requiredDocuments])
 
   // Calculate stats
   const stats = useMemo(() => {
-    const rejected = memberDocs.filter(d => d.status === 'rejected').length
-    const analyzing = memberDocs.filter(d => d.status === 'analyzing' || d.status === 'sent_for_apostille' || d.status === 'pending').length
-    const approved = memberDocs.filter(d => d.status === 'approved').length
-    
-    // Para apostilar: approved but not apostilled
-    const toApostille = memberDocs.filter(d => d.status === 'approved' && !d.isApostilled).length
-    // Para traduzir: approved and apostilled but not translated
-    const toTranslate = memberDocs.filter(d => d.status === 'approved' && d.isApostilled && !d.isTranslated).length
-    // Completed: approved, apostilled and translated
-    const completed = memberDocs.filter(d => d.status === 'approved' && d.isApostilled && d.isTranslated).length
-
-    return { rejected, analyzing, approved, toApostille, toTranslate, completed }
+      const s = {
+          rejected: 0,
+          analyzing: 0,
+          apostille: 0,
+          translation: 0,
+          completed: 0
+      }
+      memberDocs.forEach(doc => {
+          const stage = getDocStage(doc)
+          if (stage in s) {
+              s[stage as keyof typeof s]++
+          }
+      })
+      return s
   }, [memberDocs])
 
+  const hasSentDocuments = memberDocs.length > 0
   const hasRejected = stats.rejected > 0
-  
-  // Identify pending documents (required but not uploaded)
-  const pendingDocs = useMemo(() => {
-    return requiredDocuments.filter(req => {
-      // Check if there is ANY document for this type
-      const hasDoc = memberDocs.some(d => d.type === req.type)
-      return !hasDoc
-    })
-  }, [requiredDocuments, memberDocs])
-
   const hasPending = pendingDocs.length > 0
 
-  // Categorize documents by stage
-  const getDocumentsForStage = (stageId: string) => {
-    switch (stageId) {
-      case 'rejected':
-        // Only rejected documents
-        return requiredDocuments
-          .filter(req => {
-            const doc = memberDocs.find(d => d.type === req.type)
-            return doc?.status === 'rejected'
-          })
-          .map(req => {
-            const doc = memberDocs.find(d => d.type === req.type)
-            return { ...req, _document: doc }
-          })
 
-      case 'analyzing':
-        return requiredDocuments.filter(req => {
-          const doc = memberDocs.find(d => d.type === req.type)
-          return doc?.status === 'analyzing' || doc?.status === 'sent_for_apostille' || doc?.status === 'pending'
-        }).map(req => ({ ...req, _document: memberDocs.find(d => d.type === req.type) }))
-
-      case 'apostille':
-        return requiredDocuments.filter(req => {
-          const doc = memberDocs.find(d => d.type === req.type)
-          return doc?.status === 'approved' && !doc.isApostilled
-        }).map(req => ({ ...req, _document: memberDocs.find(d => d.type === req.type) }))
-
-      case 'translation':
-        return requiredDocuments.filter(req => {
-          const doc = memberDocs.find(d => d.type === req.type)
-          return doc?.status === 'approved' && doc.isApostilled && !doc.isTranslated
-        }).map(req => ({ ...req, _document: memberDocs.find(d => d.type === req.type) }))
-
-      case 'completed':
-        return requiredDocuments.filter(req => {
-          const doc = memberDocs.find(d => d.type === req.type)
-          return doc?.status === 'approved' && doc.isApostilled && doc.isTranslated
-        }).map(req => ({ ...req, _document: memberDocs.find(d => d.type === req.type) }))
-
-      default:
-        return []
-    }
+  const getDocumentName = (type: string) => {
+      const doc = requiredDocuments.find(r => r.type === type)
+      return doc ? doc.name : type
   }
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    try {
-      setUploadingType(type)
-      await onUpload(file, type, member.id)
-    } catch (error) {
-      console.error("Upload failed", error)
-    } finally {
-      setUploadingType(null)
-      e.target.value = ''
-    }
+    setPendingUpload({
+        file,
+        documentType: type,
+        documentName: getDocumentName(type)
+    })
+    setShowConfirmModal(true)
+    setUploadError(null)
+    
+    e.target.value = ''
   }
 
-  const handleDrop = async (e: React.DragEvent, type: string) => {
+  const handleDrop = (e: React.DragEvent, type: string) => {
     e.preventDefault()
     setDragOver(null)
     
     const file = e.dataTransfer.files[0]
     if (!file) return
 
+    setPendingUpload({
+        file,
+        documentType: type,
+        documentName: getDocumentName(type)
+    })
+    setShowConfirmModal(true)
+    setUploadError(null)
+  }
+
+  const handleConfirmUpload = async () => {
+    if (!pendingUpload) return
+
     try {
-      setUploadingType(type)
-      await onUpload(file, type, member.id)
-    } catch (error) {
+      setIsUploading(true)
+      setUploadError(null)
+      // We set uploadingType just for compatibility if needed elsewhere, 
+      // but the modal now blocks interaction so it's less critical.
+      setUploadingType(pendingUpload.documentType) 
+      
+      await onUpload(pendingUpload.file, pendingUpload.documentType, member.id)
+      
+      // Success
+      setShowConfirmModal(false)
+      setPendingUpload(null)
+    } catch (error: any) {
       console.error("Upload failed", error)
+      setUploadError(error.message || "Erro ao enviar documento. Tente novamente.")
     } finally {
+      setIsUploading(false)
       setUploadingType(null)
     }
+  }
+
+  const handleCancelUpload = () => {
+      setShowConfirmModal(false)
+      setPendingUpload(null)
+      setUploadError(null)
   }
 
   // Handle card click - now always toggles
@@ -213,6 +243,7 @@ export function FamilyFolderCard({
   })
 
   return (
+    <>
     <Card
       className={cn(
         "transition-all duration-300 border-2",
@@ -767,6 +798,134 @@ export function FamilyFolderCard({
             </div>
           </div>
         </div>
+
     </Card>
+    
+    {/* Modal de Confirmação de Upload */}
+    {showConfirmModal && pendingUpload && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={!isUploading ? handleCancelUpload : undefined}
+        />
+        
+        {/* Modal Content */}
+        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-md">
+                {isUploading ? (
+                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                ) : (
+                  <Upload className="h-6 w-6 text-white" />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-white text-xl">
+                  {isUploading ? 'Enviando Documento...' : 'Confirmar Envio'}
+                </h3>
+                <p className="text-blue-100 text-sm mt-1">
+                  {isUploading ? 'Aguarde enquanto processamos seu arquivo' : 'Verifique os detalhes antes de enviar'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 space-y-5">
+            
+            {/* Campo/Documento Alvo */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Documento Solicitado
+              </label>
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex items-center gap-3">
+                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <p className="font-semibold text-blue-900 dark:text-blue-100">
+                    {pendingUpload.documentName}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-0.5">
+                    Para: {member.name}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Arquivo Selecionado */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Arquivo Selecionado
+              </label>
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 flex items-center gap-4">
+                <div className="h-10 w-10 bg-white dark:bg-gray-800 rounded-lg flex items-center justify-center shadow-sm border border-gray-100 dark:border-gray-700">
+                   <span className="text-xs font-bold text-gray-500 uppercase">
+                     {pendingUpload.file.name.split('.').pop()}
+                   </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 dark:text-white truncate" title={pendingUpload.file.name}>
+                    {pendingUpload.file.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatFileSize(pendingUpload.file.size)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Alert/Warning Area */}
+            {uploadError ? (
+               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-3">
+                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+                 <p className="text-sm text-red-700 dark:text-red-300">
+                   {uploadError}
+                 </p>
+               </div>
+            ) : (
+              <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-lg p-3 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0" />
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Certifique-se que o arquivo está legível e completo. Arquivos ilegíveis podem atrasar seu processo.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={handleCancelUpload}
+              disabled={isUploading}
+              className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmUpload}
+              disabled={isUploading}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 dark:shadow-none min-w-[140px]"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Confirmar Envio
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

@@ -4,7 +4,6 @@ import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
 import { Dashboard } from './components/Dashboard'
 import PartnerDashboard from './components/PartnerDashboard'
-import { DocumentUpload } from './components/DocumentUpload'
 import { ProcessTimeline } from './components/ProcessTimeline'
 import { Notifications } from './components/Notifications'
 import { DocumentModal } from './components/DocumentModal'
@@ -13,16 +12,13 @@ import Parceiro from './components/Parceiro'
 import { ClienteAgendamento } from './components/ClienteAgendamento'
 import {
   mockClient,
-  // mockDocuments, // Removendo uso direto aqui para usar via API
-  mockProcess,
   mockNotifications,
   mockRequiredDocuments,
   mockApprovedDocuments,
   mockTranslatedDocuments,
   mockPendingActions,
-  mockFamilyMembers, // Import necessary for mapping
 } from './lib/mock-data'
-import { Document, Notification, ApprovedDocument, TranslatedDocument } from './types'
+import { Document, Notification, ApprovedDocument, TranslatedDocument, Process } from './types'
 import { Apostilamento } from './components/Apostilamento'
 import { DocumentUploadFlow } from './components/DocumentUploadFlow'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
@@ -33,6 +29,9 @@ export function ClienteApp() {
   const location = useLocation()
   const navigate = useNavigate()
   const [documents, setDocuments] = useState<Document[]>([])
+  const [familyMembers, setFamilyMembers] = useState<{id: string, name: string, type: string}[]>([])
+  const [processo, setProcesso] = useState<Process | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -57,25 +56,15 @@ export function ClienteApp() {
       // Map API documents to frontend format and infer memberId
       const mappedDocs: Document[] = apiDocs.map((doc: any) => {
         // Infer memberId from storage_path
-        // Path format: clienteId/MemberName/type/file
+        // New Path format: processoId/memberId/docType/file
         let memberId = mockClient.id // Default to main client
         
         if (doc.storage_path) {
           const parts = doc.storage_path.split('/')
-          // parts[0] is clienteId
-          // parts[1] might be memberName (sanitized) or processId
-          // If we have processId logic, it might be deeper. 
-          // Based on our controller logic: 
-          // If memberName: clienteId/SafeMemberName/docType/file
-          // If processId + memberName: clienteId/processId/SafeMemberName/docType/file
-           
-          // Let's try to match parts against sanitized member names
-          for (const part of parts) {
-            const member = mockFamilyMembers.find(m => sanitizeName(m.name) === part)
-            if (member) {
-              memberId = member.id
-              break
-            }
+          // parts[0] is processoId (or sem_processo)
+          // parts[1] is memberId (UUID)
+          if (parts.length >= 2) {
+             memberId = parts[1]
           }
         }
 
@@ -108,7 +97,59 @@ export function ClienteApp() {
   }
 
   useEffect(() => {
-    fetchDocuments()
+    const fetchInitialData = async () => {
+      setIsLoading(true)
+      try {
+        // Fetch processos
+        const processosRes = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/processos`)
+        if (processosRes.ok) {
+          const processosData = await processosRes.json()
+          if (processosData.data && processosData.data.length > 0) {
+            const apiProcesso = processosData.data[0]
+            // Map API response to Process type
+            const mappedProcesso: Process = {
+              id: apiProcesso.id,
+              clientId: mockClient.id,
+              serviceType: apiProcesso.tipo_servico,
+              currentStep: apiProcesso.etapa_atual || 1,
+              steps: [], // Steps would come from a separate endpoint or be derived
+              createdAt: new Date(apiProcesso.created_at),
+              updatedAt: new Date(apiProcesso.updated_at)
+            }
+            setProcesso(mappedProcesso)
+          }
+        }
+
+        // Fetch dependentes
+        const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/dependentes`)
+        if (dependentesRes.ok) {
+          const dependentesData = await dependentesRes.json()
+          console.log('Dependentes API Response:', dependentesData) // DEBUG
+          
+          // Map dependentes to family members format
+          const members = (dependentesData.data || []).map((dep: any) => ({
+            id: dep.id,
+            name: dep.nome_completo,
+            type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente'
+          }))
+          // Add the main client as titular
+          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }, ...members])
+        } else {
+          // Fallback: just the main client
+          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }])
+        }
+
+        // Fetch documents
+        await fetchDocuments()
+      } catch (error) {
+        console.error('Erro ao buscar dados iniciais:', error)
+        setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchInitialData()
   }, [])
 
   // Create notifications from pending actions
@@ -427,13 +468,13 @@ export function ClienteApp() {
               <Dashboard
                 client={mockClient}
                 documents={documents}
-                process={mockProcess}
+                process={processo!}
               />
             }
           />
           <Route
             path="processo"
-            element={<ProcessTimeline process={mockProcess} />}
+            element={<ProcessTimeline process={processo!} />}
           />
           <Route path="agendamento" element={<ClienteAgendamento client={mockClient} />} />
           <Route
@@ -441,6 +482,9 @@ export function ClienteApp() {
             element={
               <DocumentUploadFlow
                 clienteId={mockClient.id}
+                processoId={processo?.id || ''}
+                processType={processo?.serviceType}
+                familyMembers={familyMembers}
                 documents={documents}
                 requiredDocuments={mockRequiredDocuments}
                 onUploadSuccess={(data) => {

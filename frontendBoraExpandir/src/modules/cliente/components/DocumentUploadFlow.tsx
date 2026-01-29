@@ -1,9 +1,11 @@
 import { FamilyFolders } from './FamilyFolders'
-import { mockFamilyMembers } from '../lib/mock-data'
 import { Document as ClientDocument, RequiredDocument } from '../types'
 
 interface DocumentUploadFlowProps {
     clienteId: string
+    processoId?: string
+    processType?: string
+    familyMembers: {id: string, name: string, type: string}[]
     documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
     onUploadSuccess?: (data: any) => void
@@ -14,6 +16,9 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 export function DocumentUploadFlow({
     clienteId,
+    processoId,
+    processType,
+    familyMembers,
     documents,
     requiredDocuments,
     onUploadSuccess,
@@ -26,11 +31,12 @@ export function DocumentUploadFlow({
         formData.append('clienteId', clienteId)
         formData.append('documentType', documentType)
         formData.append('memberId', memberId)
-
-        const member = mockFamilyMembers.find(m => m.id === memberId)
-        if (member) {
-            formData.append('memberName', member.name)
+        
+        if (processoId) {
+            formData.append('processoId', processoId)
         }
+        
+        // memberName removido para usar apenas IDs na estrutura de pastas
 
         const response = await fetch(`${API_BASE_URL}/cliente/uploadDoc`, {
             method: 'POST',
@@ -49,14 +55,21 @@ export function DocumentUploadFlow({
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Envio de Documentos</h2>
+                <div className="flex items-center gap-4 mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Envio de Documentos</h2>
+                    {processType && (
+                        <span className="px-3 py-1 text-sm font-medium text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 rounded-full">
+                            {processType}
+                        </span>
+                    )}
+                </div>
                 <p className="text-gray-600 dark:text-gray-400">
                     Clique na pasta do familiar para ver e enviar os documentos solicitados.
                 </p>
             </div>
 
             <FamilyFolders
-                members={mockFamilyMembers}
+                members={familyMembers}
                 documents={documents}
                 requiredDocuments={requiredDocuments}
                 onUpload={handleUpload}

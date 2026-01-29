@@ -61,48 +61,146 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
   const [selectedMember, setSelectedMember] = useState<{name: string, id?: string} | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch Processes
-  useEffect(() => {
-    const fetchProcesses = async () => {
-        try {
-            setLoading(true);
-            const response = await fetch(`${API_BASE_URL}/juridico/processos`);
-            if (!response.ok) throw new Error('Falha ao buscar processos');
-            const result = await response.json();
-            const data: BackendProcess[] = result.data || [];
-
-            // Map backend to frontend Process
-            const mapped: Process[] = data.map(p => ({
-                id: p.id,
-                clientName: p.client?.full_name || 'Cliente Desconhecido',
-                clientId: p.client?.id || p.client_id,
-                serviceType: p.tipo_servico,
-                currentStage: p.etapa_atual ? p.etapa_atual.toString() : '1',
-                totalStages: 4, // Mock or derive
-                status: 'new', // Logic needed to determine status from p.status
-                waitingTime: 0, // Mock
-                documentsTotal: 0, // Need to fetch document counts separately or inclusion in process list
-                documentsApproved: 0, 
-                documentsPending: 0,
-                documentsAnalyzing: 0,
-                documentsApostilled: 0,
-                documentsTranslated: 0
-            }));
-            
-            // For demo purposes, we might want to fetch document stats for each process here?
-            // Or just fetch mock processes if the backend list is empty/limited
-            if (mapped.length === 0) {
-                 // Fallback to mock if empty? No, user wants real data. 
-                 // But if DB is empty, it shows nothing.
-            }
-            setProcesses(mapped);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
+  // Mock Data para Apresentação
+  const MOCK_PROCESSES: Process[] = [
+    {
+      id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      clientName: 'João Carlos Silva',
+      clientId: 'cli-001',
+      serviceType: 'Cidadania Italiana',
+      currentStage: '2',
+      totalStages: 4,
+      status: 'new',
+      waitingTime: 2,
+      documentsTotal: 18,
+      documentsApproved: 5,
+      documentsPending: 4,
+      documentsAnalyzing: 6,
+      documentsApostilled: 2,
+      documentsTranslated: 1
+    },
+    {
+      id: 'proc-002',
+      clientName: 'Maria Fernanda Costa',
+      clientId: 'cli-002',
+      serviceType: 'Cidadania Portuguesa',
+      currentStage: '3',
+      totalStages: 4,
+      status: 'pending_client',
+      waitingTime: 5,
+      documentsTotal: 12,
+      documentsApproved: 8,
+      documentsPending: 2,
+      documentsAnalyzing: 1,
+      documentsApostilled: 1,
+      documentsTranslated: 0
+    },
+    {
+      id: 'proc-003',
+      clientName: 'Roberto Mendes Junior',
+      clientId: 'cli-003',
+      serviceType: 'Cidadania Italiana',
+      currentStage: '4',
+      totalStages: 4,
+      status: 'ready',
+      waitingTime: 0,
+      documentsTotal: 22,
+      documentsApproved: 20,
+      documentsPending: 0,
+      documentsAnalyzing: 0,
+      documentsApostilled: 2,
+      documentsTranslated: 0
+    },
+    {
+      id: 'proc-004',
+      clientName: 'Ana Paula Rodrigues',
+      clientId: 'cli-004',
+      serviceType: 'Cidadania Espanhola',
+      currentStage: '1',
+      totalStages: 4,
+      status: 'new',
+      waitingTime: 1,
+      documentsTotal: 15,
+      documentsApproved: 0,
+      documentsPending: 8,
+      documentsAnalyzing: 7,
+      documentsApostilled: 0,
+      documentsTranslated: 0
+    },
+    {
+      id: 'proc-005',
+      clientName: 'Carlos Eduardo Pereira',
+      clientId: 'cli-005',
+      serviceType: 'Cidadania Italiana',
+      currentStage: '2',
+      totalStages: 4,
+      status: 'pending_client',
+      waitingTime: 3,
+      documentsTotal: 20,
+      documentsApproved: 12,
+      documentsPending: 3,
+      documentsAnalyzing: 2,
+      documentsApostilled: 2,
+      documentsTranslated: 1
+    },
+    {
+      id: 'proc-006',
+      clientName: 'Beatriz Santos Lima',
+      clientId: 'cli-006',
+      serviceType: 'Cidadania Portuguesa',
+      currentStage: '3',
+      totalStages: 4,
+      status: 'new',
+      waitingTime: 4,
+      documentsTotal: 16,
+      documentsApproved: 10,
+      documentsPending: 1,
+      documentsAnalyzing: 3,
+      documentsApostilled: 1,
+      documentsTranslated: 1
+    },
+    {
+      id: 'proc-007',
+      clientName: 'Fernando Oliveira Campos',
+      clientId: 'cli-007',
+      serviceType: 'Cidadania Italiana',
+      currentStage: '4',
+      totalStages: 4,
+      status: 'ready',
+      waitingTime: 0,
+      documentsTotal: 25,
+      documentsApproved: 23,
+      documentsPending: 0,
+      documentsAnalyzing: 0,
+      documentsApostilled: 2,
+      documentsTranslated: 0
+    },
+    {
+      id: 'proc-008',
+      clientName: 'Luciana Martins Alves',
+      clientId: 'cli-008',
+      serviceType: 'Cidadania Espanhola',
+      currentStage: '2',
+      totalStages: 4,
+      status: 'pending_client',
+      waitingTime: 6,
+      documentsTotal: 14,
+      documentsApproved: 6,
+      documentsPending: 5,
+      documentsAnalyzing: 2,
+      documentsApostilled: 1,
+      documentsTranslated: 0
     }
-    fetchProcesses();
+  ];
+
+  // Usando mock para apresentação
+  useEffect(() => {
+    setLoading(true);
+    // Simula delay de carregamento
+    setTimeout(() => {
+      setProcesses(MOCK_PROCESSES);
+      setLoading(false);
+    }, 500);
   }, []);
 
   // Fetch Documents when Folder Selected
