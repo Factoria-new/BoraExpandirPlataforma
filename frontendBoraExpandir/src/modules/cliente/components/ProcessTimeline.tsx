@@ -12,32 +12,42 @@ interface ProcessTimelineProps {
 const stepIcons = {
   pending: Clock,
   in_progress: Clock,
+  waiting: Clock,
   completed: CheckCircle,
   rejected: AlertCircle,
+  analyzing: Clock,
 }
 
 const stepColors = {
   pending: 'text-gray-400',
   in_progress: 'text-blue-600',
+  waiting: 'text-amber-500',
   completed: 'text-green-600',
   rejected: 'text-red-600',
+  analyzing: 'text-blue-600',
 }
 
 const stepBgColors = {
   pending: 'bg-gray-100',
   in_progress: 'bg-blue-100',
+  waiting: 'bg-amber-100',
   completed: 'bg-green-100',
   rejected: 'bg-red-100',
+  analyzing: 'bg-blue-100',
 }
 
 const stepLabels = {
   pending: 'Pendente',
   in_progress: 'Em Andamento',
+  waiting: 'Aguardando Você',
   completed: 'Concluído',
   rejected: 'Rejeitado',
+  analyzing: 'Em Análise',
 }
 
 export function ProcessTimeline({ process }: ProcessTimelineProps) {
+  // Simulação de lógica baseada em documentos
+  // Em uma implementação real, process teria um mapeamento dos status dos documentos
   const completedSteps = process.steps.filter(step => step.status === 'completed').length
   const totalSteps = process.steps.length
   const progressPercentage = (completedSteps / totalSteps) * 100
@@ -71,7 +81,7 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
 
       <div className="space-y-4">
         {process.steps.map((step, index) => {
-          const StepIcon = stepIcons[step.status]
+          const StepIcon = stepIcons[step.status] || Clock
           const isLast = index === process.steps.length - 1
           const isActive = process.currentStep === step.id
 
@@ -91,9 +101,9 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                   <div className="flex items-start space-x-4">
                     <div className={cn(
                       "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center",
-                      stepBgColors[step.status]
+                      stepBgColors[step.status] || 'bg-gray-100'
                     )}>
-                      <StepIcon className={cn("h-6 w-6", stepColors[step.status])} />
+                      <StepIcon className={cn("h-6 w-6", stepColors[step.status] || 'text-gray-400')} />
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -105,12 +115,13 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                           <Badge
                             variant={
                               step.status === 'completed' ? 'success' :
-                              step.status === 'in_progress' ? 'default' :
+                              (step.status === 'in_progress' || step.status === 'analyzing') ? 'default' :
                               step.status === 'rejected' ? 'destructive' :
+                              step.status === 'waiting' ? 'warning' :
                               'secondary'
                             }
                           >
-                            {stepLabels[step.status]}
+                            {stepLabels[step.status] || step.status}
                           </Badge>
                           {isActive && (
                             <Badge variant="outline">
@@ -130,12 +141,23 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                         </p>
                       )}
 
-                      {step.status === 'in_progress' && (
+                      {(step.status === 'in_progress' || step.status === 'analyzing') && (
                         <div className="mt-3">
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                             <span className="text-sm text-blue-600 font-medium">
                               Em andamento
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {step.status === 'waiting' && (
+                        <div className="mt-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                            <span className="text-sm text-amber-600 font-medium">
+                              Aguardando sua ação
                             </span>
                           </div>
                         </div>

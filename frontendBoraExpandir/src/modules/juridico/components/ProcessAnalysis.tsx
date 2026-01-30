@@ -10,7 +10,8 @@ import {
   Eye,
   Send,
   Stamp,
-  Languages
+  Languages,
+  Loader2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from '../../../components/ui/Badge';
@@ -94,37 +95,48 @@ export function ProcessAnalysis({
     setCustomReason('');
   };
 
-  const handleAction = (action: 'reject' | 'request_action' | 'next') => {
-    if (!selectedDoc) return;
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-    let updates: Partial<JuridicoDocument> = {};
-
-    if (action === 'reject') {
-      setRejectModalOpen(true);
-    } 
-    else if (action === 'next') {
-      // Avançar etapa (Usuario validou que está OK para a fase atual)
+  const confirmApproval = async () => {
+      if (!selectedDoc) return;
+      setIsUpdatingStatus(true);
+      
+      let updates: Partial<JuridicoDocument> = {};
+      
       if (selectedDoc.currentStage === 'initial_analysis') {
-        // Saiu da análise técnica, vai verificar apostilamento
         updates = { 
             currentStage: 'apostille_check',
-            status: 'analyzing_apostille' 
+            status: 'waiting_apostille' 
         };
       } else if (selectedDoc.currentStage === 'apostille_check') {
-        // Saiu do apostilamento (está apostilado), vai verificar tradução
         updates = { 
             currentStage: 'translation_check',
-            status: 'analyzing_translation'
+            status: 'waiting_translation'
         };
       } else if (selectedDoc.currentStage === 'translation_check') {
-        // Saiu da tradução (está traduzido), finaliza
         updates = { 
           currentStage: 'completed', 
           status: 'approved' 
         };
       }
+
+      await onUpdateDocument(selectedDoc.id, updates);
+      setIsUpdatingStatus(false);
+      setApproveModalOpen(false);
+  };
+
+  const handleAction = (action: 'reject' | 'request_action' | 'next') => {
+    if (!selectedDoc) return;
+
+    if (action === 'reject') {
+      setRejectModalOpen(true);
+    } 
+    else if (action === 'next') {
+      setApproveModalOpen(true);
     } 
     else if (action === 'request_action') {
+      let updates: Partial<JuridicoDocument> = {};
       // Solicitar ação da etapa (meio)
       if (selectedDoc.currentStage === 'apostille_check') {
         updates = { status: 'waiting_apostille' };
@@ -133,9 +145,8 @@ export function ProcessAnalysis({
         updates = { status: 'waiting_translation' };
         // Notifica cliente para traduzir
       }
+      onUpdateDocument(selectedDoc.id, updates);
     }
-
-    onUpdateDocument(selectedDoc.id, updates);
   };
 
   const getStageIndex = (stage: AnalysisStage) => {
@@ -362,6 +373,30 @@ export function ProcessAnalysis({
                     disabled={!rejectionReason || (rejectionReason === 'outros' && !customReason.trim())}
                 >
                     Confirmar Rejeição
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog open={approveModalOpen} onOpenChange={setApproveModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Confirmar Aprovação</DialogTitle>
+                <DialogDescription>
+                    {selectedDoc?.currentStage === 'initial_analysis'
+                        ? 'Este documento será aprovado na etapa de Análise Técnica. O próximo passo será aguardar o cliente realizar o apostilamento.'
+                        : selectedDoc?.currentStage === 'apostille_check'
+                        ? 'Este documento será aprovado na etapa de Apostilamento. O próximo passo será aguardar o cliente enviar a tradução juramentada.'
+                        : 'Este documento será aprovado na etapa de Tradução. Isso concluirá o ciclo de validação deste documento.'}
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setApproveModalOpen(false)} disabled={isUpdatingStatus}>
+                    Cancelar
+                </Button>
+                <Button onClick={confirmApproval} className="bg-green-600 hover:bg-green-700 text-white" disabled={isUpdatingStatus}>
+                     {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Confirmar
                 </Button>
             </DialogFooter>
         </DialogContent>

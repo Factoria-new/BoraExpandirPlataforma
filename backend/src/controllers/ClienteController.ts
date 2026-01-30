@@ -167,7 +167,7 @@ class ClienteController {
 
   async uploadDoc(req: any, res: any) {
     try {
-      const { clienteId, documentType, processoId } = req.body
+      const { clienteId, documentType, processoId, documentoId } = req.body
       const file = req.file
 
       // Logs de debug
@@ -175,8 +175,8 @@ class ClienteController {
       console.log('req.body:', req.body)
       console.log('clienteId:', clienteId)
       console.log('processoId:', processoId)
+      console.log('documentoId:', documentoId)
       console.log('memberId:', req.body.memberId)
-      console.log('memberName:', req.body.memberName)
       console.log('documentType:', documentType)
       console.log('file:', file ? {
         originalname: file.originalname,
@@ -189,37 +189,31 @@ class ClienteController {
         return res.status(400).json({ message: 'Nenhum arquivo enviado' })
       }
 
-      if (!clienteId) {
-        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      if (!clienteId && !documentoId) {
+        return res.status(400).json({ message: 'clienteId ou documentoId é obrigatório' })
       }
 
-      if (!documentType) {
-        return res.status(400).json({ message: 'documentType é obrigatório' })
+      if (!documentType && !documentoId) {
+        return res.status(400).json({ message: 'documentType é obrigatório para novos documentos' })
       }
 
       // Gerar nome único para o arquivo
       const timestamp = Date.now()
       const memberId = req.body.memberId
-      // memberName removido pois agora usamos apenas IDs na estrutura de pastas
       const fileExtension = file.originalname.split('.').pop()
-      const fileName = `${documentType}_${timestamp}.${fileExtension}`
+      const fileName = `${documentType || 'doc'}_${timestamp}.${fileExtension}`
 
-      // Construir o caminho do arquivo usando IDs para consistência e privacidade
-      // Estrutura: processoId/memberId/documentType/fileName
+      // Construir o caminho do arquivo
       let filePath = ''
-
       if (processoId) {
         filePath += `${processoId}/`
       } else {
-        // Fallback caso não tenha processo (embora deveria ter)
         filePath += `sem_processo/`
       }
 
-      // Se tiver memberId, usa ele. Se não, usa o clienteId (titular)
-      const targetId = memberId || clienteId
+      const targetId = memberId || clienteId || 'desconhecido'
       filePath += `${targetId}`
-
-      filePath += `/${documentType}/${fileName}`
+      filePath += `/${documentType || 'upgrade'}/${fileName}`
 
       console.log('FilePath gerado:', filePath)
 
@@ -230,32 +224,66 @@ class ClienteController {
         contentType: file.mimetype
       })
 
-      // Criar registro do documento no banco de dados (com processoId se fornecido)
-      const documentoRecord = await ClienteRepository.createDocumento({
-        clienteId,
-        processoId: processoId || undefined,  // Associa ao processo se fornecido
-        tipo: documentType,
-        nomeOriginal: file.originalname,
-        nomeArquivo: fileName,
-        storagePath: filePath,
-        publicUrl: uploadResult.publicUrl,
-        contentType: file.mimetype,
-        tamanho: file.size,
-        status: 'ANALYZING',
-        dependenteId: (memberId && memberId !== clienteId) ? memberId : undefined // Só associa se for um dependente real, não o titular
-      })
+      let documentoRecord;
 
-      console.log('Documento registrado no banco:', documentoRecord.id)
+      if (documentoId) {
+        // Lógica de upgrade: Se já existe um documento, vamos determinar o novo status
+        // Se o status era WAITING_APOSTILLE, muda para ANALYZING_APOSTILLE
+        // Se era WAITING_TRANSLATION, muda para ANALYZING_TRANSLATION
+        // Caso contrário, assume ANALYZING
+        
+        // Para simplificar, poderíamos buscar o documento antes, mas vamos usar uma lógica baseada em flags ou status esperado
+        // Por enquanto, vamos inferir do status atual no banco ou via parâmetro extra.
+        // Como o Repository.updateDocumentoStatus já lida com status, vamos apenas atualizar o arquivo aqui.
+        
+        // Buscar status atual para decidir o próximo
+        const docs = await ClienteRepository.getDocumentosByClienteId(clienteId);
+        const docAtual = docs.find(d => d.id === documentoId);
+        
+        let novoStatus: 'ANALYZING' | 'ANALYZING_APOSTILLE' | 'ANALYZING_TRANSLATION' = 'ANALYZING';
+        if (docAtual?.status === 'WAITING_APOSTILLE') {
+          novoStatus = 'ANALYZING_APOSTILLE';
+        } else if (docAtual?.status === 'WAITING_TRANSLATION') {
+          novoStatus = 'ANALYZING_TRANSLATION';
+        }
+
+        documentoRecord = await ClienteRepository.updateDocumentoFile(documentoId, {
+          nomeOriginal: file.originalname,
+          nomeArquivo: fileName,
+          storagePath: filePath,
+          publicUrl: uploadResult.publicUrl,
+          contentType: file.mimetype,
+          tamanho: file.size,
+          status: novoStatus
+        });
+      } else {
+        // Criar novo registro
+        documentoRecord = await ClienteRepository.createDocumento({
+          clienteId,
+          processoId: processoId || undefined,
+          tipo: documentType,
+          nomeOriginal: file.originalname,
+          nomeArquivo: fileName,
+          storagePath: filePath,
+          publicUrl: uploadResult.publicUrl,
+          contentType: file.mimetype,
+          tamanho: file.size,
+          status: 'ANALYZING',
+          dependenteId: (memberId && memberId !== clienteId) ? memberId : undefined
+        })
+      }
+
+      console.log('Documento processado no banco:', documentoRecord.id)
 
       return res.status(200).json({
-        message: 'Documento enviado com sucesso',
+        message: documentoId ? 'Documento atualizado com sucesso' : 'Documento enviado com sucesso',
         data: {
           id: documentoRecord.id,
           ...uploadResult,
           fileName: file.originalname,
-          documentType,
-          clienteId,
-          processoId: processoId || null,
+          documentType: documentoRecord.tipo,
+          clienteId: documentoRecord.cliente_id,
+          processoId: documentoRecord.processo_id,
           status: documentoRecord.status
         }
       })
@@ -350,7 +378,12 @@ class ClienteController {
         return res.status(400).json({ message: 'documentoId é obrigatório' })
       }
 
-      if (!status || !['PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE', 'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'APPROVED', 'REJECTED'].includes(status)) {
+      const validStatuses = [
+        'PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE', 
+        'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'APPROVED', 'REJECTED'
+      ];
+
+      if (!status || !validStatuses.includes(status)) {
         return res.status(400).json({ message: 'Status inválido' })
       }
 
@@ -358,9 +391,14 @@ class ClienteController {
       let apostilado: boolean | undefined = undefined;
       let traduzido: boolean | undefined = undefined;
 
+      // Se passou da análise inicial e foi para apostilamento, nada muda (já é false por padrão)
+      
+      // Se passou da análise do apostilamento e foi para tradução
       if (['WAITING_TRANSLATION', 'ANALYZING_TRANSLATION'].includes(status)) {
         apostilado = true;
-      } else if (status === 'APPROVED') {
+      } 
+      // Se foi aprovado totalmente
+      else if (status === 'APPROVED') {
         apostilado = true;
         traduzido = true;
       }

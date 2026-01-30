@@ -27,7 +27,7 @@ export function DocumentUploadFlow({
     onDelete
 }: DocumentUploadFlowProps) {
 
-    const handleUpload = async (file: File, documentType: string, memberId: string) => {
+    const handleUpload = async (file: File, documentType: string, memberId: string, documentoId?: string) => {
         const formData = new FormData()
         formData.append('file', file)
         formData.append('clienteId', clienteId)
@@ -36,6 +36,10 @@ export function DocumentUploadFlow({
         
         if (processoId) {
             formData.append('processoId', processoId)
+        }
+
+        if (documentoId) {
+            formData.append('documentoId', documentoId)
         }
         
         // memberName removido para usar apenas IDs na estrutura de pastas

@@ -17,7 +17,7 @@ interface FamilyMemberModalProps {
     member: { id: string, name: string, type: string }
     documents: Document[]
     requiredDocuments: RequiredDocument[]
-    onUpload: (file: File, documentType: string, memberId: string) => Promise<void>
+    onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
     onDelete: (documentId: string) => void
     onUpdateStatus?: (documentId: string, status: string, reason?: string) => Promise<void>
 }
@@ -170,7 +170,8 @@ export function FamilyMemberModal({
             // Set optimistic state
             setOptimisticDocs(prev => ({...prev, [type]: tempDoc}))
             
-            await onUpload(file, type, member.id)
+            const docId = memberDocs.find(d => d.type === type)?.id
+            await onUpload(file, type, member.id, docId)
             
             // Note: We don't clear optimistic doc here immediately because we wait for props to update.
             // If we clear it now, there might be a flicker if props haven't updated yet.
@@ -434,10 +435,11 @@ export function FamilyMemberModal({
                                                                 id={inputId}
                                                                 className="hidden"
                                                                 onChange={(e) => handleFileSelect(e, reqDoc.type)}
-                                                                disabled={isUploading || uploadedDoc?.status === 'approved'}
+                                                                                                                                 disabled={isUploading || (uploadedDoc?.status === 'approved' && uploadedDoc.isApostilled && uploadedDoc.isTranslated)}
+
                                                             />
 
-                                                            {(!uploadedDoc || uploadedDoc.status === 'rejected' || uploadedDoc.status === 'pending') && (
+                                                                                                                        {(!uploadedDoc || uploadedDoc.status === 'rejected' || uploadedDoc.status === 'pending' || uploadedDoc.status === 'waiting_apostille' || uploadedDoc.status === 'waiting_translation') && (
                                                                 <Button
                                                                     size="sm"
                                                                     className={`
@@ -451,9 +453,20 @@ export function FamilyMemberModal({
                                                                     disabled={isUploading}
                                                                 >
                                                                     {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                                                                    {isRejected ? 'Corrigir Agora' : (uploadedDoc ? 'Reenviar' : 'Enviar Arquivo')}
+                                                                    {isRejected ? 'Corrigir Agora' : 
+                                                                     uploadedDoc?.status === 'waiting_apostille' ? 'Upload Apostila' :
+                                                                     uploadedDoc?.status === 'waiting_translation' ? 'Upload Tradução' :
+                                                                     (uploadedDoc ? 'Reenviar' : 'Enviar Arquivo')}
                                                                 </Button>
                                                             )}
+
+                                                            {(uploadedDoc?.status === 'analyzing_apostille' || uploadedDoc?.status === 'analyzing_translation' || uploadedDoc?.status === 'sent_for_apostille') && (
+                                                                <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md text-xs font-medium">
+                                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                    Em Análise
+                                                                </div>
+                                                            )}
+
 
                                                             {uploadedDoc && uploadedDoc.status !== 'approved' && uploadedDoc.status !== 'analyzing' && uploadedDoc.status !== 'sent_for_apostille' && !isRejected && (
                                                                 <Button
@@ -466,16 +479,16 @@ export function FamilyMemberModal({
                                                                 </Button>
                                                             )}
 
-                                                        {uploadedDoc?.status === 'approved' && (
+                                                                                                                {uploadedDoc?.status === 'approved' && (
                                                             <div className="flex flex-col items-end gap-1">
                                                                 {!uploadedDoc.isApostilled ? (
                                                                     <Button
                                                                         size="sm"
                                                                         variant="outline"
                                                                         className="h-7 text-[10px] bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:text-amber-800"
-                                                                        onClick={() => console.log('Solicitar Apostilamento', uploadedDoc.id)}
+                                                                        onClick={() => document.getElementById(inputId)?.click()}
                                                                     >
-                                                                        Solicitar Apostilamento
+                                                                        Upload Apostila
                                                                     </Button>
                                                                 ) : !uploadedDoc.isTranslated ? (
                                                                     <div className="flex items-center gap-2">
@@ -486,9 +499,9 @@ export function FamilyMemberModal({
                                                                             size="sm"
                                                                             variant="outline"
                                                                             className="h-7 text-[10px] bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
-                                                                            onClick={() => console.log('Solicitar Tradução', uploadedDoc.id)}
+                                                                            onClick={() => document.getElementById(inputId)?.click()}
                                                                         >
-                                                                            Solicitar Tradução
+                                                                            Upload Tradução
                                                                         </Button>
                                                                     </div>
                                                                 ) : (
@@ -502,6 +515,8 @@ export function FamilyMemberModal({
                                                                 )}
                                                             </div>
                                                         )}
+
+
                                                     </div>
                                                 </div>
                                             </div>

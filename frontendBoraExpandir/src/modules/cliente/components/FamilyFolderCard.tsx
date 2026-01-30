@@ -20,7 +20,7 @@ interface FamilyFolderCardProps {
   isExpanded: boolean
   onToggle: () => void
   onOpenUploadModal: () => void  // New prop to open initial upload modal
-  onUpload: (file: File, documentType: string, memberId: string) => Promise<void>
+  onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
   onDelete: (documentId: string) => void
 }
 
@@ -97,6 +97,7 @@ export function FamilyFolderCard({
     file: File
     documentType: string
     documentName: string
+    documentoId?: string
   } | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -107,14 +108,25 @@ export function FamilyFolderCard({
 
   // Determine the stage of a document
   const getDocStage = (doc: ClientDocument) => {
-    if (doc.status === 'rejected') return 'rejected'
-    if (doc.status === 'pending') return 'analyzing'
-    if (doc.status === 'approved') {
-        if (!doc.isApostilled) return 'apostille'
-        if (!doc.isTranslated) return 'translation'
-        return 'completed'
+    const status = doc.status?.toLowerCase();
+    
+    if (status === 'rejected') return 'rejected';
+    
+    // Se está em qualquer sub-etapa de apostilamento ou aprovado sem apostila
+    if (status?.includes('apostille') || (status === 'approved' && !doc.isApostilled)) {
+        return 'apostille';
     }
-    return 'analyzing'
+    
+    // Se está em qualquer sub-etapa de tradução ou aprovado com apostila mas sem tradução
+    if (status?.includes('translation') || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
+        return 'translation';
+    }
+    
+    if (status === 'approved' && doc.isApostilled && doc.isTranslated) {
+        return 'completed';
+    }
+
+    return 'analyzing';
   }
 
   const getDocumentsForStage = (stageId: string) => {
@@ -143,23 +155,47 @@ export function FamilyFolderCard({
         }))
   }, [memberDocs, requiredDocuments])
 
-  // Calculate stats
+  // Calculate stats for the three main categories
   const stats = useMemo(() => {
       const s = {
           rejected: 0,
-          analyzing: 0,
+          analyzing: 0,      // Documents under legal/juridico review
           apostille: 0,
           translation: 0,
-          completed: 0
+          completed: 0,      // Fully processed (approved + apostilled + translated)
+          waitingAction: 0   // Documents waiting for client action (upload)
       }
+      
       memberDocs.forEach(doc => {
-          const stage = getDocStage(doc)
-          if (stage in s) {
-              s[stage as keyof typeof s]++
+          const statusLower = doc.status?.toLowerCase() || '';
+          
+          // Em Análise: Any "analyzing" status
+          if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+              s.analyzing++;
           }
+          // Concluídos: Fully approved AND apostilled AND translated
+          else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
+              s.completed++;
+          }
+          // Aguardam Ação: Rejected or waiting for upload
+          else if (statusLower === 'rejected') {
+              s.rejected++;
+              s.waitingAction++;
+          }
+          else if (statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
+              s.waitingAction++;
+          }
+          // Stages for internal tracking
+          const stage = getDocStage(doc);
+          if (stage === 'apostille') s.apostille++;
+          if (stage === 'translation') s.translation++;
       })
+      
+      // Add pending (missing) docs to waitingAction
+      s.waitingAction += pendingDocs.length;
+      
       return s
-  }, [memberDocs])
+  }, [memberDocs, pendingDocs])
 
   const hasSentDocuments = memberDocs.length > 0
   const hasRejected = stats.rejected > 0
@@ -178,7 +214,8 @@ export function FamilyFolderCard({
     setPendingUpload({
         file,
         documentType: type,
-        documentName: getDocumentName(type)
+        documentName: getDocumentName(type),
+        documentoId: memberDocs.find(d => d.type === type)?.id
     })
     setShowConfirmModal(true)
     setUploadError(null)
@@ -196,7 +233,8 @@ export function FamilyFolderCard({
     setPendingUpload({
         file,
         documentType: type,
-        documentName: getDocumentName(type)
+        documentName: getDocumentName(type),
+        documentoId: memberDocs.find(d => d.type === type)?.id
     })
     setShowConfirmModal(true)
     setUploadError(null)
@@ -212,7 +250,7 @@ export function FamilyFolderCard({
       // but the modal now blocks interaction so it's less critical.
       setUploadingType(pendingUpload.documentType) 
       
-      await onUpload(pendingUpload.file, pendingUpload.documentType, member.id)
+      await onUpload(pendingUpload.file, pendingUpload.documentType, member.id, pendingUpload.documentoId)
       
       // Success
       setShowConfirmModal(false)
@@ -326,6 +364,11 @@ export function FamilyFolderCard({
                   </>
                 )}
                 <div className="flex flex-col items-center">
+                  <span className="font-bold text-amber-600">{stats.waitingAction}</span>
+                  <span className="text-[10px] text-gray-400">Aguardam Ação</span>
+                </div>
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+                <div className="flex flex-col items-center">
                   <span className="font-bold text-blue-600">{stats.analyzing}</span>
                   <span className="text-[10px] text-gray-400">Em Análise</span>
                 </div>
@@ -335,6 +378,7 @@ export function FamilyFolderCard({
                   <span className="text-[10px] text-gray-400">Concluídos</span>
                 </div>
               </div>
+
             )}
 
             {/* Icon - Upload for new, Expand for existing */}
@@ -721,42 +765,44 @@ export function FamilyFolderCard({
                                       {/* Apostille stage action */}
                                       {stage.id === 'apostille' && (
                                         <div className="flex gap-2">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 text-xs bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-                                          >
-                                            Solicitar Apostilamento
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
-                                            onClick={() => document.getElementById(inputId)?.click()}
-                                          >
-                                            <Upload className="h-3 w-3" />
-                                            Upload
-                                          </Button>
+                                          {(doc?.status === 'waiting_apostille' || doc?.status === 'approved') ? (
+                                            <Button
+                                              size="sm"
+                                              className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                                              onClick={() => document.getElementById(inputId)?.click()}
+                                              disabled={isUploading}
+                                            >
+                                              <Upload className="h-3 w-3" />
+                                              Upload Apostila
+                                            </Button>
+                                          ) : (
+                                            <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
+                                              <Clock className="h-4 w-4" />
+                                              <span>Em Análise</span>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
 
                                       {/* Translation stage action */}
                                       {stage.id === 'translation' && (
                                         <div className="flex gap-2">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 text-xs bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                                          >
-                                            Solicitar Tradução
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
-                                            onClick={() => document.getElementById(inputId)?.click()}
-                                          >
-                                            <Upload className="h-3 w-3" />
-                                            Upload 
-                                          </Button>
+                                          {(doc?.status === 'waiting_translation' || (doc?.status === 'approved' && doc.isApostilled)) ? (
+                                            <Button
+                                              size="sm"
+                                              className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                                              onClick={() => document.getElementById(inputId)?.click()}
+                                              disabled={isUploading}
+                                            >
+                                              <Upload className="h-3 w-3" />
+                                              Upload Tradução
+                                            </Button>
+                                          ) : (
+                                            <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
+                                              <Clock className="h-4 w-4" />
+                                              <span>Em Análise</span>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
 

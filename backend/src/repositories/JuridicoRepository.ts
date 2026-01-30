@@ -76,7 +76,8 @@ class JuridicoRepository {
                     id,
                     full_name,
                     email
-                )
+                ),
+                documentos (*)
             `)
             .order('created_at', { ascending: false })
 
@@ -129,7 +130,8 @@ class JuridicoRepository {
                     id,
                     full_name,
                     email
-                )
+                ),
+                documentos (*)
             `)
             .is('responsavel_id', null)
             .order('created_at', { ascending: false })
@@ -152,7 +154,8 @@ class JuridicoRepository {
                     id,
                     nome,
                     email
-                )
+                ),
+                documentos (*)
             `)
             .eq('responsavel_id', responsavelId)
             .order('created_at', { ascending: false })

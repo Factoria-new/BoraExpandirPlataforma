@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { FamilyFolderCard } from './FamilyFolderCard'
 import { InitialUploadModal } from './InitialUploadModal'
 import { Document as ClientDocument, RequiredDocument } from '../types'
+import { ClipboardList, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 
 interface FamilyMember {
     id: string
@@ -16,7 +17,7 @@ interface FamilyFoldersProps {
     members: FamilyMember[]
     documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
-    onUpload: (file: File, documentType: string, memberId: string) => Promise<void>
+    onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
     onDelete: (documentId: string) => void
 }
 
@@ -39,6 +40,41 @@ export function FamilyFolders({
     
     // Enriched members with fetched data
     const [members, setMembers] = useState<FamilyMember[]>(initialMembers)
+
+    // Calculate aggregated stats for the entire process
+    const processStats = useMemo(() => {
+        const stats = {
+            waitingAction: 0,  // Aguardam Ação
+            analyzing: 0,      // Em Análise
+            completed: 0,      // Concluídos
+            total: 0           // Total required
+        }
+        
+        members.forEach(member => {
+            const memberDocs = documents.filter(d => d.memberId === member.id)
+            const uploadedTypes = new Set(memberDocs.map(d => d.type))
+            
+            // Count pending (not uploaded) docs
+            const pendingCount = requiredDocuments.filter(req => !uploadedTypes.has(req.type)).length
+            stats.waitingAction += pendingCount
+            
+            memberDocs.forEach(doc => {
+                const statusLower = doc.status?.toLowerCase() || ''
+                
+                if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+                    stats.analyzing++
+                } else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
+                    stats.completed++
+                } else if (statusLower === 'rejected' || statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
+                    stats.waitingAction++
+                }
+            })
+            
+            stats.total += requiredDocuments.length
+        })
+        
+        return stats
+    }, [members, documents, requiredDocuments])
 
     // Fetch dependentes and client information
     useEffect(() => {
@@ -95,6 +131,37 @@ export function FamilyFolders({
 
     return (
         <>
+            {/* Process-level Summary Card */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                    <ClipboardList className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                    <h3 className="font-semibold text-slate-700 dark:text-slate-200">Resumo do Processo</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center gap-2 mb-1">
+                            <AlertCircle className="h-4 w-4 text-amber-500" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Aguardam Ação</span>
+                        </div>
+                        <span className="text-2xl font-bold text-amber-600">{processStats.waitingAction}</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Clock className="h-4 w-4 text-blue-500" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Em Análise</span>
+                        </div>
+                        <span className="text-2xl font-bold text-blue-600">{processStats.analyzing}</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Concluídos</span>
+                        </div>
+                        <span className="text-2xl font-bold text-green-600">{processStats.completed}</span>
+                    </div>
+                </div>
+            </div>
+
             <div className="space-y-4">
                 {members.map((member) => (
                     <FamilyFolderCard
@@ -110,6 +177,7 @@ export function FamilyFolders({
                     />
                 ))}
             </div>
+
 
             {/* Initial Upload Modal */}
             {uploadModalMember && (

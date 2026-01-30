@@ -76,7 +76,7 @@ export interface Document {
 export interface ProcessStep {
   id: number;
   name: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'rejected';
+  status: 'pending' | 'in_progress' | 'completed' | 'rejected' | 'analyzing' | 'waiting';
   completedAt?: Date;
   description?: string;
 }

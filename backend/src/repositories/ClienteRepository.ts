@@ -313,6 +313,43 @@ class ClienteRepository {
 
         return data as DocumentoRecord
     }
+
+    // Atualizar arquivo de um documento existente (substituição)
+    async updateDocumentoFile(
+        documentoId: string,
+        params: {
+            nomeOriginal: string
+            nomeArquivo: string
+            storagePath: string
+            publicUrl?: string
+            contentType?: string
+            tamanho?: number
+            status: 'ANALYZING' | 'ANALYZING_APOSTILLE' | 'ANALYZING_TRANSLATION'
+        }
+    ): Promise<DocumentoRecord> {
+        const { data, error } = await supabase
+            .from('documentos')
+            .update({
+                nome_original: params.nomeOriginal,
+                nome_arquivo: params.nomeArquivo,
+                storage_path: params.storagePath,
+                public_url: params.publicUrl || null,
+                content_type: params.contentType || null,
+                tamanho: params.tamanho || null,
+                status: params.status,
+                atualizado_em: new Date().toISOString()
+            })
+            .eq('id', documentoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar arquivo do documento:', error)
+            throw error
+        }
+
+        return data as DocumentoRecord
+    }
 }
 
 export default new ClienteRepository()

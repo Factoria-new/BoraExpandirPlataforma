@@ -51,29 +51,51 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
       const docs = p.documentos || [];
       const total = docs.length;
       
-      const approved = docs.filter(d => d.status === 'APPROVED').length;
-      const analyzing = docs.filter(d => d.status?.startsWith('ANALYZING') || d.status === 'PENDING_REVIEW').length; 
-      const pending = docs.filter(d => !d.status || d.status === 'PENDING').length;
-      const apostilled = docs.filter(d => d.status?.includes('APOSTILLE')).length; // Loose check based on behavior
-      const translated = docs.filter(d => d.status?.includes('TRANSLATION')).length;
+      // Concluídos: Status APPROVED e flags de apostilamento/tradução (se aplicável ao fluxo, mas assumindo fluxo completo aqui)
+      // Ou simplificando: Status APPROVED e (apostilado=true e traduzido=true)
+      const completed = docs.filter(d => 
+        d.status === 'APPROVED' && d.apostilado && d.traduzido
+      ).length;
+
+      // Em análise: Status iniciados com ANALYZING
+      const analyzing = docs.filter(d => 
+        d.status && (
+            d.status === 'ANALYZING' || 
+            d.status === 'ANALYZING_APOSTILLE' || 
+            d.status === 'ANALYZING_TRANSLATION'
+        )
+      ).length; 
+
+      // Aguardando Ação (Pendentes): PENDING, REJECTED, ou WAITING_*
+      const waitingAction = docs.filter(d => 
+        !d.status || 
+        d.status === 'PENDING' || 
+        d.status === 'REJECTED' ||
+        d.status.startsWith('WAITING')
+      ).length;
+
+      // Manter contagens específicas para visualização detalhada se necessário
+      const apostilled = docs.filter(d => d.apostilado).length; 
+      const translated = docs.filter(d => d.traduzido).length;
 
       // Determine status based on some logic, or use backend status if it matches
       let status: Process['status'] = 'pending_client';
       if (p.status === 'NOVO') status = 'new';
       if (p.status === 'PRONTO') status = 'ready';
-      
+      // Se todos concluídos e total > 0 -> Ready? (Can refine this later)
+
       return {
           id: p.id,
           clientName: p.clientes?.nome || 'Cliente Desconhecido',
           clientId: p.cliente_id,
           serviceType: p.tipo_servico || 'Serviço',
           currentStage: p.etapa_atual?.toString() || '1',
-          totalStages: 4, // Fixed for now or from backend
+          totalStages: 4, 
           status: status, 
-          waitingTime: 0, // Calculate from created_at
+          waitingTime: 0, 
           documentsTotal: total,
-          documentsApproved: approved,
-          documentsPending: pending,
+          documentsApproved: completed, // Mapping "Approved" visual to "Completed"
+          documentsPending: waitingAction, // Mapping "Pending" visual to "Waiting Action"
           documentsAnalyzing: analyzing,
           documentsApostilled: apostilled,
           documentsTranslated: translated
@@ -124,29 +146,32 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
       // 1. Initialize with Titular and Dependents
       const initialMembers: any[] = [];
       
+      const createMemberObj = (id: string, name: string, type: string, isTitular: boolean) => ({
+        id, name, type, isTitular,
+        docs: 0,
+        waitingAction: 0, // Aguardam Ação
+        analyzing: 0,     // Em Análise
+        completed: 0,     // Concluídos
+        status: []
+      });
+
       if (selectedFolder) {
           // Add Titular
-          initialMembers.push({
-              id: selectedFolder.clientId,
-              name: selectedFolder.clientName || 'Titular',
-              type: 'Titular',
-              isTitular: true,
-              docs: 0,
-              pending: 0,
-              status: []
-          });
+          initialMembers.push(createMemberObj(
+              selectedFolder.clientId,
+              selectedFolder.clientName || 'Titular',
+              'Titular',
+              true
+          ));
 
           // Add fetched dependents
           dependents.forEach(dep => {
-              initialMembers.push({
-                  id: dep.id,
-                  name: dep.nome_completo || dep.name,
-                  type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente',
-                  isTitular: false,
-                  docs: 0,
-                  pending: 0,
-                  status: []
-              });
+              initialMembers.push(createMemberObj(
+                  dep.id,
+                  dep.nome_completo || dep.name,
+                  dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente',
+                  false
+              ));
           });
       }
 
@@ -155,15 +180,10 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
           // Use dependente_id if present, otherwise it's the titular (cliente_id)
           let memberId = doc.dependente_id || selectedFolder?.clientId;
           
-          let existing = acc.find((m: any) => m.id === memberId);
-          const isPending = doc.status === 'PENDING' || !doc.status;
+          let member = acc.find((m: any) => m.id === memberId);
 
-          if (existing) {
-              existing.docs++;
-              if (isPending) existing.pending++;
-              existing.status.push(doc.status);
-          } else {
-               // Fallback for members not in dependents list (legacy documents?)
+          if (!member) {
+               // Fallback for members not in dependents list
                let memberName = '...';
                let memberType = 'Dependente';
                let isTitular = false;
@@ -180,17 +200,28 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                         }
                     }
                }
-
-               acc.push({
-                   id: memberId,
-                   name: memberName,
-                   type: memberType,
-                   isTitular: isTitular,
-                   docs: 1,
-                   pending: isPending ? 1 : 0,
-                   status: [doc.status]
-               });
+               member = createMemberObj(memberId, memberName, memberType, isTitular);
+               acc.push(member);
           }
+
+          // Count stats
+          member.docs++;
+          
+          const status = doc.status || 'PENDING';
+          const statusLower = status.toLowerCase();
+
+          if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+              member.analyzing++;
+          }
+          else if (statusLower === 'approved' && doc.apostilado && doc.traduzido) {
+              member.completed++;
+          }
+          else if (statusLower === 'rejected' || statusLower.startsWith('waiting') || statusLower === 'pending') {
+              member.waitingAction++;
+          }
+          
+          member.status.push(doc.status);
+          
           return acc;
       }, initialMembers);
   }, [selectedFolder, selectedFolderDocs, dependents]);
@@ -216,9 +247,24 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             const status = doc.status ? doc.status.toLowerCase() : 'pending';
             
             let stage: AnalysisStage = 'initial_analysis';
-            if (status.includes('apostille')) stage = 'apostille_check';
-            if (status.includes('translation')) stage = 'translation_check';
-            if (status === 'approved') stage = 'completed';
+            
+            // Map status to visual stage flow
+            if (status.includes('apostille')) {
+                stage = 'apostille_check';
+            } else if (status.includes('translation')) {
+                stage = 'translation_check';
+            } else if (status === 'approved') {
+                 // Only fully completed if flags are set, but strictly 'approved' status usually comes last
+                 if (doc.apostilado && doc.traduzido) {
+                     stage = 'completed';
+                 } else {
+                    // Intermediate approved states? 
+                    // If approved but not apostilled -> waiting apostille (should be status waiting_apostille)
+                    // If approved logic is handled by status string, we trust status.
+                    // Fallback: if 'approved' generic, treat as completed for stage visualization?
+                    stage = 'completed';
+                 }
+            }
 
             return {
                 id: doc.id,
@@ -232,6 +278,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             }
         });
   };
+
 
   if (selectedMember && selectedFolder) {
     const memberDocs = getFilteredDocsForMember(selectedMember.id || selectedFolder.clientId);
@@ -306,16 +353,18 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                         <h3 className="text-lg font-bold mb-1">{member.name}</h3>
                         <p className="text-sm text-gray-500 mb-4">{member.docs} Documentos no total</p>
 
-                        <div className="space-y-2">
-                             <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-500">Pendentes de Upload</span>
-                                <span className="font-medium text-orange-600">{member.pending}</span>
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                             <div className="bg-amber-50 dark:bg-amber-900/10 p-2 rounded-lg border border-amber-100 dark:border-amber-900/20">
+                                <span className="block font-bold text-amber-600 text-lg">{member.waitingAction}</span>
+                                <span className="text-gray-500 text-[10px]">Aguardam</span>
                             </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-500">Para Análise</span>
-                                <span className="font-medium text-blue-600">
-                                    {member.docs - member.pending}
-                                </span>
+                            <div className="bg-blue-50 dark:bg-blue-900/10 p-2 rounded-lg border border-blue-100 dark:border-blue-900/20">
+                                <span className="block font-bold text-blue-600 text-lg">{member.analyzing}</span>
+                                <span className="text-gray-500 text-[10px]">Análise</span>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-900/10 p-2 rounded-lg border border-green-100 dark:border-green-900/20">
+                                <span className="block font-bold text-green-600 text-lg">{member.completed}</span>
+                                <span className="text-gray-500 text-[10px]">Concluídos</span>
                             </div>
                         </div>
 
@@ -380,25 +429,22 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     
                     <div className="h-px bg-gray-200 dark:bg-gray-700" />
                     
-                    <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                        <div>
+                             <span className="block text-amber-600 font-bold text-lg">{process.documentsPending}</span>
+                             <span className="text-muted-foreground text-[10px]">Aguardam</span>
+                        </div>
                         <div>
                              <span className="block text-blue-600 font-bold text-lg">{process.documentsAnalyzing}</span>
-                             <span className="text-muted-foreground">Em Análise</span>
+                             <span className="text-muted-foreground text-[10px]">Análise</span>
                         </div>
                          <div>
                              <span className="block text-green-600 font-bold text-lg">{process.documentsApproved}</span>
-                             <span className="text-muted-foreground">Aprovados</span>
-                        </div>
-                        <div>
-                             <span className="block text-amber-600 font-bold text-lg">{process.documentsApostilled}</span>
-                             <span className="text-muted-foreground">Apostilados</span>
-                        </div>
-                         <div>
-                             <span className="block text-purple-600 font-bold text-lg">{process.documentsTranslated}</span>
-                             <span className="text-muted-foreground">Traduzidos</span>
+                             <span className="text-muted-foreground text-[10px]">Concluídos</span>
                         </div>
                     </div>
                 </div>
+
 
             </div>
             
