@@ -38,6 +38,9 @@ interface FormsDeclarationsSectionProps {
     clienteId: string
     clientName: string
     members: FamilyMember[]
+    isOpen?: boolean
+    onOpenChange?: (open: boolean) => void
+    hideTrigger?: boolean
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -46,12 +49,26 @@ export function FormsDeclarationsSection({
     processoId,
     clienteId,
     clientName,
-    members
+    members,
+    isOpen,
+    onOpenChange,
+    hideTrigger
 }: FormsDeclarationsSectionProps) {
     const [isExpanded, setIsExpanded] = useState(true)
     const [forms, setForms] = useState<FormDeclaration[]>([])
     const [isLoading, setIsLoading] = useState(false)
-    const [showUploadModal, setShowUploadModal] = useState(false)
+    const [internalShowUploadModal, setInternalShowUploadModal] = useState(false)
+    
+    // Derived state for modal visibility
+    const showUploadModal = isOpen !== undefined ? isOpen : internalShowUploadModal
+    const setShowUploadModal = (open: boolean) => {
+        if (onOpenChange) {
+            onOpenChange(open)
+        } else {
+            setInternalShowUploadModal(open)
+        }
+    }
+
     const [selectedMemberId, setSelectedMemberId] = useState<string>('')
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [isUploading, setIsUploading] = useState(false)
@@ -65,7 +82,7 @@ export function FormsDeclarationsSection({
 
             setIsLoading(true)
             try {
-                const res = await fetch(`${API_BASE_URL}/cliente/processo/${processoId}/formularios`)
+                const res = await fetch(`${API_BASE_URL}/juridico/formularios/${clienteId}`)
                 if (res.ok) {
                     const data = await res.json()
                     // Map member names
@@ -114,7 +131,7 @@ export function FormsDeclarationsSection({
             formData.append('clienteId', clienteId)
             formData.append('memberId', selectedMemberId)
 
-            const res = await fetch(`${API_BASE_URL}/cliente/processo/${processoId}/formularios`, {
+            const res = await fetch(`${API_BASE_URL}/juridico/formularios`, {
                 method: 'POST',
                 body: formData
             })
@@ -154,7 +171,7 @@ export function FormsDeclarationsSection({
 
     const handleDelete = async (formId: string) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/cliente/processo/${processoId}/formularios/${formId}`, {
+            const res = await fetch(`${API_BASE_URL}/juridico/formularios/${formId}`, {
                 method: 'DELETE'
             })
 
@@ -169,6 +186,7 @@ export function FormsDeclarationsSection({
     return (
         <>
             {/* Main Section - Fixed at bottom */}
+            {!hideTrigger && (
             <div className="border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10">
                 {/* Header */}
                 <button
@@ -259,6 +277,7 @@ export function FormsDeclarationsSection({
                     </div>
                 )}
             </div>
+            )}
 
             {/* Upload Modal */}
             {showUploadModal && (

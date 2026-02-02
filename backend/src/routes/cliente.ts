@@ -51,4 +51,8 @@ cliente.get('/processo/:processoId/formularios/:memberId', ClienteController.get
 cliente.post('/processo/:processoId/formularios', upload.single('file'), ClienteController.uploadFormulario.bind(ClienteController))
 cliente.delete('/processo/:processoId/formularios/:formularioId', ClienteController.deleteFormulario.bind(ClienteController))
 
+// Client Form Response Route
+cliente.post('/formularios/:formularioId/response', upload.single('file'), ClienteController.uploadFormularioResponse.bind(ClienteController))
+
 export default cliente
+

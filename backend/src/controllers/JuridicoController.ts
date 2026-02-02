@@ -267,6 +267,136 @@ class JuridicoController {
             })
         }
     }
+
+    // =============================================
+    // FORMULÁRIOS DO JURÍDICO (enviados para clientes)
+    // =============================================
+
+    // Mocked funcionario juridico ID (will be replaced by auth middleware later)
+    private MOCKED_FUNCIONARIO_JURIDICO_ID = '41f21e5c-dd93-4592-9470-e043badc3a18'
+
+    // POST /juridico/formularios - Upload document from juridico to client
+    async uploadFormularioJuridico(req: any, res: any) {
+        try {
+            const { clienteId, memberId, processoId } = req.body
+            const file = req.file
+
+            // TODO: Get from auth middleware when implemented
+            const funcionarioJuridicoId = req.body.funcionarioJuridicoId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+
+            console.log('========== UPLOAD FORMULARIO JURIDICO DEBUG ==========')
+            console.log('funcionarioJuridicoId:', funcionarioJuridicoId)
+            console.log('clienteId:', clienteId)
+            console.log('memberId:', memberId)
+            console.log('processoId:', processoId)
+            console.log('file:', file ? { originalname: file.originalname, size: file.size } : 'undefined')
+            console.log('======================================================')
+
+            if (!file) {
+                return res.status(400).json({ message: 'Nenhum arquivo enviado' })
+            }
+
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            }
+
+            // Generate unique filename
+            const timestamp = Date.now()
+            const fileExtension = file.originalname.split('.').pop()
+            const fileName = `doc_juridico_${timestamp}.${fileExtension}`
+
+            // Build storage path: clienteId/juridico/memberId_or_titular/filename
+            const targetMember = memberId || 'titular'
+            const filePath = `${clienteId}/juridico/${targetMember}/${fileName}`
+
+            // Upload to formularios-juridico bucket
+            const uploadResult = await JuridicoRepository.uploadFormularioJuridico({
+                filePath,
+                fileBuffer: file.buffer,
+                contentType: file.mimetype
+            })
+
+            // Create database record
+            const formularioRecord = await JuridicoRepository.createFormularioJuridico({
+                funcionarioJuridicoId,
+                clienteId,
+                membroId: memberId || undefined,
+                processoId: processoId || undefined,
+                nomeOriginal: file.originalname,
+                nomeArquivo: fileName,
+                storagePath: filePath,
+                publicUrl: uploadResult.publicUrl,
+                contentType: file.mimetype,
+                tamanho: file.size
+            })
+
+            return res.status(200).json({
+                message: 'Documento enviado para o cliente com sucesso',
+                data: {
+                    id: formularioRecord.id,
+                    name: file.originalname.replace(/\.[^/.]+$/, ''),
+                    fileName: file.originalname,
+                    fileSize: file.size,
+                    uploadDate: new Date(),
+                    memberId: memberId || null,
+                    downloadUrl: uploadResult.publicUrl
+                }
+            })
+        } catch (error: any) {
+            console.error('Erro ao upload de formulário jurídico:', error)
+            return res.status(500).json({
+                message: 'Erro ao enviar documento para o cliente',
+                error: error.message
+            })
+        }
+    }
+
+    // GET /juridico/formularios/:clienteId - Get documents sent by juridico to this client
+    async getFormulariosJuridico(req: any, res: any) {
+        try {
+            const { clienteId } = req.params
+
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            }
+
+            const formularios = await JuridicoRepository.getFormulariosJuridicoByClienteId(clienteId)
+
+            return res.status(200).json({
+                message: 'Documentos do jurídico recuperados com sucesso',
+                data: formularios
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar formulários jurídico:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar documentos do jurídico',
+                error: error.message
+            })
+        }
+    }
+
+    // DELETE /juridico/formularios/:formularioId - Delete a document
+    async deleteFormularioJuridico(req: any, res: any) {
+        try {
+            const { formularioId } = req.params
+
+            if (!formularioId) {
+                return res.status(400).json({ message: 'formularioId é obrigatório' })
+            }
+
+            await JuridicoRepository.deleteFormularioJuridico(formularioId)
+
+            return res.status(200).json({
+                message: 'Documento deletado com sucesso'
+            })
+        } catch (error: any) {
+            console.error('Erro ao deletar formulário jurídico:', error)
+            return res.status(500).json({
+                message: 'Erro ao deletar documento',
+                error: error.message
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

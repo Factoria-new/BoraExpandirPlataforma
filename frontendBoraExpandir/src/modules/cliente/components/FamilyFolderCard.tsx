@@ -311,6 +311,40 @@ export function FamilyFolderCard({
     setUploadError(null)
   }
 
+  // Handler passed to FormsDeclarationsCard for uploading signed forms
+  const handleFormResponseUpload = async (file: File, formularioId: string) => {
+    try {
+      setIsUploading(true)
+      setUploadError(null)
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+      const response = await fetch(`${API_BASE_URL}/cliente/formularios/${formularioId}/response`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao enviar formulário assinado')
+      }
+
+      const result = await response.json()
+      console.log('Formulário assinado enviado com sucesso:', result)
+      
+      // Show success (you could add a toast notification here)
+      alert('Formulário assinado enviado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao enviar formulário:', error)
+      setUploadError(error.message || 'Erro ao enviar formulário assinado')
+      alert(error.message || 'Erro ao enviar formulário assinado')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   // Handle card click - now always toggles
   const handleCardClick = () => {
     onToggle()
@@ -901,6 +935,7 @@ export function FamilyFolderCard({
             memberId={member.id}
             memberName={member.name}
             processoId={processoId}
+            onUpload={handleFormResponseUpload}
           />
         )}
 

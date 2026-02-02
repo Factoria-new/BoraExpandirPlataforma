@@ -1,7 +1,33 @@
-import { Router } from 'express'
+import { Router, Request } from 'express'
+import multer, { FileFilterCallback } from 'multer'
 import JuridicoController from '../controllers/JuridicoController'
 
 const juridico = Router()
+
+// Configuração do multer para armazenar em memória (buffer)
+const storage = multer.memoryStorage()
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // Limite de 10MB
+  },
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Tipo de arquivo não permitido. Use PDF, JPG, PNG ou DOC.'))
+    }
+  }
+})
 
 // =============================================
 // ROTAS DE FUNCIONÁRIOS
@@ -46,4 +72,18 @@ juridico.post('/atribuir-responsavel', JuridicoController.atribuirResponsavel.bi
 
 juridico.get('/estatisticas', JuridicoController.getEstatisticas.bind(JuridicoController))
 
+// =============================================
+// ROTAS DE FORMULÁRIOS DO JURÍDICO (enviados para clientes)
+// =============================================
+
+// Upload documento do jurídico para cliente
+juridico.post('/formularios', upload.single('file'), JuridicoController.uploadFormularioJuridico.bind(JuridicoController))
+
+// Buscar documentos enviados para um cliente
+juridico.get('/formularios/:clienteId', JuridicoController.getFormulariosJuridico.bind(JuridicoController))
+
+// Deletar documento
+juridico.delete('/formularios/:formularioId', JuridicoController.deleteFormularioJuridico.bind(JuridicoController))
+
 export default juridico
+

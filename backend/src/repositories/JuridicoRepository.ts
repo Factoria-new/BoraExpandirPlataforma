@@ -337,6 +337,133 @@ class JuridicoRepository {
             { funcionario: null, totalClientes: vagos || 0, isVago: true }
         ]
     }
+
+    // =============================================
+    // FORMULÁRIOS DO JURÍDICO (enviados para clientes)
+    // =============================================
+
+    // Upload document to formularios-juridico bucket
+    async uploadFormularioJuridico(params: { filePath: string, fileBuffer: Buffer, contentType: string }): Promise<{ path: string, fullPath: string, publicUrl: string }> {
+        const { data, error } = await supabase.storage
+            .from('formularios-juridico')
+            .upload(params.filePath, params.fileBuffer, {
+                contentType: params.contentType,
+                upsert: true
+            })
+
+        if (error) {
+            console.error('Erro ao fazer upload para bucket formularios-juridico:', error)
+            throw error
+        }
+
+        const { data: urlData } = supabase.storage
+            .from('formularios-juridico')
+            .getPublicUrl(params.filePath)
+
+        return {
+            path: data.path,
+            fullPath: data.fullPath,
+            publicUrl: urlData.publicUrl
+        }
+    }
+
+    // Create formulario_juridico record
+    async createFormularioJuridico(params: {
+        funcionarioJuridicoId: string
+        clienteId: string
+        membroId?: string
+        processoId?: string
+        nomeOriginal: string
+        nomeArquivo: string
+        storagePath: string
+        publicUrl: string
+        contentType: string
+        tamanho: number
+    }): Promise<any> {
+        const { data, error } = await supabase
+            .from('formularios_juridico')
+            .insert([{
+                funcionario_juridico_id: params.funcionarioJuridicoId,
+                cliente_id: params.clienteId,
+                membro_id: params.membroId || null,
+                processo_id: params.processoId || null,
+                nome_original: params.nomeOriginal,
+                nome_arquivo: params.nomeArquivo,
+                storage_path: params.storagePath,
+                public_url: params.publicUrl,
+                content_type: params.contentType,
+                tamanho: params.tamanho
+            }])
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao criar formulário jurídico:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    // Get formularios_juridico by cliente (documents sent to this client)
+    async getFormulariosJuridicoByClienteId(clienteId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('formularios_juridico')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar formulários jurídico:', error)
+            throw error
+        }
+
+        return (data || []).map(f => ({
+            id: f.id,
+            name: f.nome_original?.replace(/\.[^/.]+$/, '') || 'Documento',
+            fileName: f.nome_original,
+            fileSize: f.tamanho,
+            uploadDate: f.criado_em,
+            memberId: f.membro_id,
+            downloadUrl: f.public_url,
+            funcionarioId: f.funcionario_juridico_id
+        }))
+    }
+
+    // Delete formulario_juridico
+    async deleteFormularioJuridico(formularioId: string): Promise<void> {
+        // Fetch to get storage_path
+        const { data: formulario, error: fetchError } = await supabase
+            .from('formularios_juridico')
+            .select('storage_path')
+            .eq('id', formularioId)
+            .single()
+
+        if (fetchError) {
+            console.error('Erro ao buscar formulário jurídico para deletar:', fetchError)
+            throw fetchError
+        }
+
+        if (formulario?.storage_path) {
+            const { error: storageError } = await supabase.storage
+                .from('formularios-juridico')
+                .remove([formulario.storage_path])
+
+            if (storageError) {
+                console.error('Erro ao deletar arquivo do storage:', storageError)
+            }
+        }
+
+        const { error: deleteError } = await supabase
+            .from('formularios_juridico')
+            .delete()
+            .eq('id', formularioId)
+
+        if (deleteError) {
+            console.error('Erro ao deletar formulário jurídico:', deleteError)
+            throw deleteError
+        }
+    }
 }
 
 export default new JuridicoRepository()

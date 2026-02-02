@@ -486,7 +486,8 @@ class ClienteController {
       const uploadResult = await ClienteRepository.uploadDocument({
         filePath,
         fileBuffer: file.buffer,
-        contentType: file.mimetype
+        contentType: file.mimetype,
+        bucket: 'formularios-juridico'
       })
 
       // Criar registro na tabela de formulários
@@ -541,6 +542,94 @@ class ClienteController {
       console.error('Erro ao deletar formulário:', error)
       return res.status(500).json({
         message: 'Erro ao deletar formulário',
+        error: error.message
+      })
+    }
+  }
+
+  // POST /cliente/formularios/:formularioId/response
+  async uploadFormularioResponse(req: any, res: any) {
+    try {
+      const { formularioId } = req.params
+      const file = req.file
+
+      console.log('====== UPLOAD FORMULARIO RESPONSE ======')
+      console.log('formularioId:', formularioId)
+      console.log('file:', file ? { originalname: file.originalname, size: file.size } : 'undefined')
+      console.log('========================================')
+
+      if (!file) {
+        return res.status(400).json({ message: 'Nenhum arquivo enviado' })
+      }
+
+      if (!formularioId) {
+        return res.status(400).json({ message: 'formularioId é obrigatório' })
+      }
+
+      // Get the original juridico form to extract cliente_id and membro_id
+      const { data: originalForm, error: fetchError } = await (await import('../config/SupabaseClient')).supabase
+        .from('formularios_juridico')
+        .select('cliente_id, membro_id')
+        .eq('id', formularioId)
+        .single()
+
+      if (fetchError || !originalForm) {
+        console.error('Erro ao buscar formulário original:', fetchError)
+        return res.status(404).json({ message: 'Formulário original não encontrado' })
+      }
+
+      const { cliente_id: clienteId, membro_id: membroId } = originalForm
+
+      // Generate unique filename
+      const timestamp = Date.now()
+      const fileExtension = file.originalname.split('.').pop()
+      const fileName = `signed_${timestamp}.${fileExtension}`
+
+      // Build storage path: clienteId/cliente/memberId_or_titular/filename
+      const targetMember = membroId || 'titular'
+      const filePath = `${clienteId}/cliente/${targetMember}/${fileName}`
+
+      console.log('========== CLIENT RESPONSE PATH ==========')
+      console.log('Bucket: formularios-juridico')
+      console.log('Target Member (Folder):', targetMember)
+      console.log('Generated FileName:', fileName)
+      console.log('FULL PATH (filePath):', filePath)
+      console.log('=========================================')
+
+      // Upload to formularios-juridico bucket (cliente folder)
+      const uploadResult = await ClienteRepository.uploadFormularioClienteResponse({
+        filePath,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype
+      })
+
+      // Create database record
+      const formularioRecord = await ClienteRepository.createFormularioClienteResponse({
+        formularioJuridicoId: formularioId,
+        clienteId,
+        membroId,
+        nomeOriginal: file.originalname,
+        nomeArquivo: fileName,
+        storagePath: uploadResult.path,
+        publicUrl: uploadResult.publicUrl,
+        contentType: file.mimetype,
+        tamanho: file.size
+      })
+
+      console.log('Resposta de formulário criada com sucesso:', formularioRecord.id)
+
+      return res.status(201).json({
+        message: 'Resposta de formulário enviada com sucesso',
+        data: {
+          id: formularioRecord.id,
+          formulario_juridico_id: formularioId,
+          publicUrl: uploadResult.publicUrl
+        }
+      })
+    } catch (error: any) {
+      console.error('Erro ao enviar resposta de formulário:', error)
+      return res.status(500).json({
+        message: 'Erro ao enviar resposta de formulário',
         error: error.message
       })
     }

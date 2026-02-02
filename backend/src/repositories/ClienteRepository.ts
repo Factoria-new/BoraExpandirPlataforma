@@ -143,23 +143,23 @@ class ClienteRepository {
         return updatedData
     }
 
-    async uploadDocument({ filePath, fileBuffer, contentType }: UploadDocumentParams): Promise<UploadDocumentResult> {
+    async uploadDocument({ filePath, fileBuffer, contentType, bucket = 'documentos' }: UploadDocumentParams & { bucket?: string }): Promise<UploadDocumentResult> {
         // Upload para o Supabase Storage
         const { data, error } = await supabase.storage
-            .from('documentos')
+            .from(bucket)
             .upload(filePath, fileBuffer, {
                 contentType,
                 upsert: true
             })
 
         if (error) {
-            console.error('Erro ao fazer upload para Supabase:', error)
+            console.error(`Erro ao fazer upload para Supabase bucket ${bucket}:`, error)
             throw error
         }
 
         // Obter URL pública do arquivo
         const { data: urlData } = supabase.storage
-            .from('documentos')
+            .from(bucket)
             .getPublicUrl(filePath)
 
         return {
@@ -357,7 +357,7 @@ class ClienteRepository {
     // Buscar formulários de um processo (opcionalmente filtrado por memberId)
     async getFormulariosByProcessoId(processoId: string, memberId?: string): Promise<any[]> {
         let query = supabase
-            .from('formularios')
+            .from('formularios_juridico') // Changed from 'formularios'
             .select('*')
             .eq('processo_id', processoId)
             .order('criado_em', { ascending: false })
@@ -396,12 +396,16 @@ class ClienteRepository {
         contentType: string
         tamanho: number
     }): Promise<any> {
+        // Mocked ID for client uploads (or system uploads)
+        const SYSTEM_JURIDICO_ID = '41f21e5c-dd93-4592-9470-e043badc3a18'
+
         const { data, error } = await supabase
-            .from('formularios')
+            .from('formularios_juridico') // Changed from 'formularios'
             .insert([{
-                processo_id: params.processoId,
+                funcionario_juridico_id: SYSTEM_JURIDICO_ID,
                 cliente_id: params.clienteId,
                 membro_id: params.memberId,
+                processo_id: params.processoId,
                 nome_original: params.nomeOriginal,
                 nome_arquivo: params.nomeArquivo,
                 storage_path: params.storagePath,
@@ -424,7 +428,7 @@ class ClienteRepository {
     async deleteFormulario(formularioId: string): Promise<void> {
         // Buscar o formulário para obter o storage_path
         const { data: formulario, error: fetchError } = await supabase
-            .from('formularios')
+            .from('formularios_juridico') // Changed from 'formularios'
             .select('storage_path')
             .eq('id', formularioId)
             .single()
@@ -437,7 +441,7 @@ class ClienteRepository {
         if (formulario?.storage_path) {
             // Deletar do storage
             const { error: storageError } = await supabase.storage
-                .from('documentos')
+                .from('formularios-juridico') // Changed bucket too! assuming we use the same bucket
                 .remove([formulario.storage_path])
 
             if (storageError) {
@@ -447,7 +451,7 @@ class ClienteRepository {
 
         // Deletar registro do banco
         const { error: deleteError } = await supabase
-            .from('formularios')
+            .from('formularios_juridico') // Changed from 'formularios'
             .delete()
             .eq('id', formularioId)
 
@@ -455,6 +459,103 @@ class ClienteRepository {
             console.error('Erro ao deletar formulário:', deleteError)
             throw deleteError
         }
+    }
+
+    // ============================================
+    // FORMULARIOS CLIENTE (Client Response Forms)
+    // ============================================
+
+    async uploadFormularioClienteResponse(params: {
+        filePath: string
+        fileBuffer: Buffer
+        contentType: string
+    }): Promise<{ path: string; fullPath: string; publicUrl: string }> {
+        const { data, error } = await supabase.storage
+            .from('formularios-juridico')  // Same bucket, different folder structure
+            .upload(params.filePath, params.fileBuffer, {
+                contentType: params.contentType,
+                upsert: true
+            })
+
+        if (error) {
+            console.error('Erro ao fazer upload de resposta de formulário:', error)
+            throw error
+        }
+
+        const { data: urlData } = supabase.storage
+            .from('formularios-juridico')
+            .getPublicUrl(params.filePath)
+
+        return {
+            path: data.path,
+            fullPath: data.fullPath,
+            publicUrl: urlData.publicUrl
+        }
+    }
+
+    async createFormularioClienteResponse(params: {
+        formularioJuridicoId: string
+        clienteId: string
+        membroId: string
+        nomeOriginal: string
+        nomeArquivo: string
+        storagePath: string
+        publicUrl: string
+        contentType: string
+        tamanho: number
+    }): Promise<any> {
+        const { data, error } = await supabase
+            .from('formularios_cliente')
+            .insert([{
+                formulario_juridico_id: params.formularioJuridicoId,
+                cliente_id: params.clienteId,
+                membro_id: params.membroId,
+                nome_original: params.nomeOriginal,
+                nome_arquivo: params.nomeArquivo,
+                storage_path: params.storagePath,
+                public_url: params.publicUrl,
+                content_type: params.contentType,
+                tamanho: params.tamanho
+            }])
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao criar resposta de formulário:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    async getFormularioClienteResponsesByFormularioId(formularioJuridicoId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('formularios_cliente')
+            .select('*')
+            .eq('formulario_juridico_id', formularioJuridicoId)
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar respostas de formulário:', error)
+            throw error
+        }
+
+        return data || []
+    }
+
+    async getFormularioClienteResponsesByCliente(clienteId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('formularios_cliente')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar respostas de formulários do cliente:', error)
+            throw error
+        }
+
+        return data || []
     }
 }
 

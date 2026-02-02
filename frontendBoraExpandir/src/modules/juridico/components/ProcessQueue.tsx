@@ -7,6 +7,7 @@ import { ProcessAnalysis, JuridicoDocument, AnalysisStage } from './ProcessAnaly
 import juridicoService, { Processo } from '../services/juridicoService';
 import { FormsDeclarationsSection } from './FormsDeclarationsSection';
 
+
 export interface Process {
     id: string;
     clientName: string;
@@ -46,6 +47,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     const [dependents, setDependents] = useState<any[]>([]); // To resolve names
     const [selectedMember, setSelectedMember] = useState<{ name: string, id?: string } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
     // Helper function to map Backend Process to Frontend Process View
     const mapProcessoToView = (p: Processo): Process => {
@@ -312,6 +314,8 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
         )
     }
 
+
+
     if (selectedFolder) {
         return (
             <div className="space-y-6 p-8">
@@ -333,6 +337,16 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                             ID: {selectedFolder.clientId}
                         </p>
                     </div>
+                </div>
+
+                <div className="absolute top-8 right-8">
+                     <Button 
+                        onClick={() => setIsFormModalOpen(true)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+                    >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Enviar Documentos
+                    </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -392,6 +406,9 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                             name: m.name,
                             type: m.type
                         }))}
+                        isOpen={isFormModalOpen}
+                        onOpenChange={setIsFormModalOpen}
+                        hideTrigger={true}
                     />
                 </div>
             </div>

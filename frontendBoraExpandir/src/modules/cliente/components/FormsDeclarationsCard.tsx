@@ -6,7 +6,8 @@ import {
     Clock,
     ChevronDown,
     ChevronUp,
-    Folder
+    Folder,
+    Upload
 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -28,7 +29,7 @@ interface FormsDeclarationsCardProps {
     memberName: string
     processoId: string
     isJuridico?: boolean
-    onUpload?: (file: File, memberId: string) => Promise<void>
+    onUpload?: (file: File, formularioId: string) => Promise<void>
     onDelete?: (formId: string) => Promise<void>
 }
 
@@ -45,23 +46,38 @@ export function FormsDeclarationsCard({
     const [isExpanded, setIsExpanded] = useState(false)
     const [forms, setForms] = useState<FormDeclaration[]>([])
     const [isLoading, setIsLoading] = useState(false)
+    const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
 
     // Fetch forms for this member
     useEffect(() => {
         const fetchForms = async () => {
-            if (!processoId || !memberId) return
+            console.log('===> Fetching Forms STARTED')
+            console.log('processoId:', processoId)
+            console.log('memberId:', memberId)
+            
+            if (!processoId || !memberId) {
+                console.log('Missing parameters, aborting.')
+                return
+            }
 
             setIsLoading(true)
             try {
+                console.log(`Fetching from: ${API_BASE_URL}/cliente/processo/${processoId}/formularios/${memberId}`)
                 const res = await fetch(`${API_BASE_URL}/cliente/processo/${processoId}/formularios/${memberId}`)
+                console.log('Response Status:', res.status)
+                
                 if (res.ok) {
                     const data = await res.json()
+                    console.log('Data received:', data)
                     setForms(data.data || [])
+                } else {
+                    console.error('Fetch failed with status:', res.status)
                 }
             } catch (error) {
                 console.error('Erro ao buscar formulários:', error)
             } finally {
                 setIsLoading(false)
+                console.log('===> Fetching Forms FINISHED')
             }
         }
 
@@ -83,6 +99,19 @@ export function FormsDeclarationsCard({
         }
     }
 
+    const handleUploadClick = (formId: string) => {
+        setSelectedFormId(formId)
+        document.getElementById(`upload-form-${formId}`)?.click()
+    }
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, formularioId: string) => {
+        const file = e.target.files?.[0]
+        if (file && onUpload) {
+            await onUpload(file, formularioId)
+            e.target.value = '' // Reset input
+        }
+    }
+
     return (
         <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
             {/* Header */}
@@ -96,10 +125,10 @@ export function FormsDeclarationsCard({
                     </div>
                     <div className="text-left">
                         <h4 className="font-semibold text-purple-900 dark:text-purple-100">
-                            Formulários e Declarações
+                            Documentos Pedidos
                         </h4>
                         <p className="text-xs text-purple-600 dark:text-purple-400">
-                            Documentos enviados pelo jurídico
+                            Formulários para preencher e assinar
                         </p>
                     </div>
                 </div>
@@ -129,7 +158,7 @@ export function FormsDeclarationsCard({
                     ) : forms.length === 0 ? (
                         <div className="py-6 text-center text-gray-500 dark:text-gray-400">
                             <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">Nenhum formulário disponível ainda</p>
+                            <p className="text-sm">Nenhum formulário solicitado</p>
                             <p className="text-xs text-gray-400 mt-1">
                                 O jurídico enviará documentos aqui quando necessário
                             </p>
@@ -150,7 +179,7 @@ export function FormsDeclarationsCard({
                                         </p>
                                         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                             <Clock className="h-3 w-3" />
-                                            <span>{formatDate(form.uploadDate)}</span>
+                                            <span>{formatDate(new Date(form.uploadDate))}</span>
                                             <span>•</span>
                                             <span>{formatFileSize(form.fileSize)}</span>
                                         </div>
@@ -158,6 +187,27 @@ export function FormsDeclarationsCard({
                                 </div>
 
                                 <div className="flex items-center gap-2">
+                                    {/* Upload Signed Button (Only for Client View, i.e., when onUpload is provided) */}
+                                    {onUpload && (
+                                        <>
+                                            <input 
+                                                type="file" 
+                                                id={`upload-form-${form.id}`}
+                                                className="hidden"
+                                                accept=".pdf,application/pdf"
+                                                onChange={(e) => handleFileChange(e, form.id)}
+                                            />
+                                            <Button
+                                                size="sm"
+                                                className="h-8 px-3 bg-purple-600 hover:bg-purple-700 text-white text-xs"
+                                                onClick={() => handleUploadClick(form.id)}
+                                            >
+                                                <Upload className="h-3 w-3 mr-1.5" />
+                                                Enviar Assinado
+                                            </Button>
+                                        </>
+                                    )}
+
                                     <Button
                                         size="sm"
                                         variant="ghost"
