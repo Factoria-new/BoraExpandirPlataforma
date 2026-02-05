@@ -53,6 +53,181 @@ class ComercialController {
         }
     }
 
+    /**
+     * Cria sessão de checkout do MercadoPago e retorna o link
+     * O agendamento será criado pelo webhook após confirmação do pagamento
+     */
+    async createAgendamentoMercadoPago(req: any, res: any) {
+        try {
+            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos } = req.body
+            
+            // Validação básica
+            if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
+                return res.status(400).json({ 
+                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id, produto_nome, valor' 
+                })
+            }
+
+            // Normaliza data_hora para UTC
+            const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
+
+            // Verifica disponibilidade do horário antes de criar o checkout
+            const duracao = duracao_minutos || 60
+            const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
+
+            if (!disponibilidade.disponivel) {
+                return res.status(409).json({ 
+                    message: 'Horário indisponível',
+                    conflitos: disponibilidade.agendamentos 
+                })
+            }
+
+            // Cria a preferência de checkout no MercadoPago
+            const MercadoPagoService = (await import('../services/MercadoPagoService')).default
+            const checkout = await MercadoPagoService.createCheckoutPreference({
+                nome,
+                email,
+                telefone,
+                data_hora: dataHoraIso,
+                produto_id,
+                produto_nome,
+                valor,
+                duracao_minutos: duracao
+            })
+
+            console.log('Checkout MercadoPago criado:', checkout.preferenceId)
+
+            return res.status(200).json({
+                checkoutUrl: checkout.checkoutUrl,
+                preferenceId: checkout.preferenceId,
+                message: 'Checkout criado. Aguardando pagamento para confirmar agendamento.'
+            })
+            
+        } catch (error: any) {
+            console.error('Erro ao criar checkout MercadoPago:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao criar checkout', 
+                error: error.message 
+            })
+        }
+    }   
+
+    /**
+     * Cria sessão de checkout do Stripe e retorna o link
+     * O agendamento será criado pelo webhook após confirmação do pagamento
+     */
+    async createAgendamentoStripe(req: any, res: any) {
+        try {
+            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, isEuro } = req.body
+            
+            // Validação básica
+            if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
+                return res.status(400).json({ 
+                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id, produto_nome, valor' 
+                })
+            }
+
+            // Normaliza data_hora para UTC
+            const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
+
+            // Verifica disponibilidade do horário antes de criar o checkout
+            const duracao = duracao_minutos || 60
+            const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
+
+            if (!disponibilidade.disponivel) {
+                return res.status(409).json({ 
+                    message: 'Horário indisponível',
+                    conflitos: disponibilidade.agendamentos 
+                })
+            }
+
+            // Cria a sessão de checkout no Stripe
+            const StripeService = (await import('../services/StripeService')).default
+            const checkout = await StripeService.createCheckoutSession({
+                nome,
+                email,
+                telefone,
+                data_hora: dataHoraIso,
+                produto_id,
+                produto_nome,
+                valor: Math.round(valor * 100), // Converte para centavos (Stripe espera o menor valor da moeda)
+                duracao_minutos: duracao,
+                isEuro: isEuro ?? true
+            })
+
+            console.log('Checkout Stripe criado:', checkout.sessionId)
+            console.log('Checkout Stripe criado:', checkout.checkoutUrl)
+
+            return res.status(200).json({
+                checkoutUrl: checkout.checkoutUrl,
+                sessionId: checkout.sessionId,
+                message: 'Checkout criado. Aguardando pagamento para confirmar agendamento.'
+            })
+            
+        } catch (error: any) {
+            console.error('Erro ao criar checkout Stripe:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao criar checkout', 
+                error: error.message 
+            })
+        }
+    }   
+
+    /**
+     * Processa o webhook do Stripe para confirmar agendamento após o pagamento
+     */
+    async handleStripeWebhook(req: any, res: any) {
+        const sig = req.headers['stripe-signature']
+        const StripeService = (await import('../services/StripeService')).default
+
+        let event
+
+        try {
+            // req.body deve ser o RAW body para validação da assinatura
+            event = StripeService.validateWebhookSignature(req.body, sig)
+        } catch (err: any) {
+            console.error('Erro na validação do Webhook Stripe:', err.message)
+            return res.status(400).send(`Webhook Error: ${err.message}`)
+        }
+
+        // Handle the event
+        switch (event.type) {
+            case 'checkout.session.completed': {
+                const session = event.data.object as any
+                const metadata = session.metadata
+
+                if (metadata && metadata.tipo === 'agendamento') {
+                    try {
+                        console.log('Pagamento Stripe confirmado. Criando agendamento:', metadata.email)
+                        
+                        const agendamento = {
+                            nome: metadata.nome,
+                            email: metadata.email,
+                            telefone: metadata.telefone,
+                            data_hora: metadata.data_hora,
+                            produto_id: metadata.produto_id,
+                            duracao_minutos: parseInt(metadata.duracao_minutos) || 60,
+                            status: 'agendado'
+                        }
+
+                        await ComercialRepository.createAgendamento(agendamento)
+                        console.log('Agendamento criado com sucesso via Webhook Stripe')
+                    } catch (error: any) {
+                        console.error('Erro ao criar agendamento via Webhook Stripe:', error)
+                        // Retornamos 500 para o Stripe tentar novamente se for um erro temporário
+                        return res.status(500).json({ message: 'Erro ao processar agendamento' })
+                    }
+                }
+                break
+            }
+            default:
+                console.log(`Evento Stripe não processado: ${event.type}`)
+        }
+
+        // Return a 200 response to acknowledge receipt of the event
+        res.json({ received: true })
+    }
+
     async verificarDisponibilidade(data_hora: string, duracao_minutos: number) {
         console.log('Verificando disponibilidade para:', data_hora, duracao_minutos)
         

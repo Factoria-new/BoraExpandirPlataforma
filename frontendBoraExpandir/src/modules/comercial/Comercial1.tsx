@@ -5,6 +5,7 @@ import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash
 import { useToast } from '../../components/ui/Toast' // <-- Ensure this file exists or update the path
 import { SUCESSO, ERRO, AVISO } from '../../components/MockFrases'
 import { CalendarPicker } from '../../components/ui/CalendarPicker'
+import { AgendamentoConfirmacaoModal } from './components/AgendamentoConfirmacaoModal'
 
 interface Cliente {
   id: string
@@ -160,6 +161,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     email: '',
     telefone: '',
   })
+  const [showConfirmacao, setShowConfirmacao] = useState(false)
+  const [agendamentoPayload, setAgendamentoPayload] = useState<any>(null)
   const clienteSelectorRef = useRef<HTMLDivElement | null>(null)
 
   // Filtrar clientes por busca
@@ -273,6 +276,29 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     setPasso('confirmacao')
   }
 
+  const handleVoltar = () => {
+    switch (passo) {
+      case 'calendario':
+        setPasso('produto')
+        break
+      case 'horario':
+        setPasso('calendario')
+        break
+      case 'cliente':
+        setPasso('horario')
+        break
+      case 'confirmacao':
+        if (isClientView || preSelectedClient) {
+          setPasso('horario')
+        } else {
+          setPasso('cliente')
+        }
+        break
+      default:
+        break
+    }
+  }
+
   const carregarAgendamentosDoDia = async (dataIso: string) => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
     if (!backendUrl) {
@@ -315,82 +341,44 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const handleFinalizarAgendamento = async () => {
     if (!agendamentoPreview) return
 
-    // Usar email temporário se o cliente não tiver email
     const emailFinal = agendamentoPreview.cliente.email || emailTemporario
 
-    const resumoTexto = `Oi ${agendamentoPreview.cliente.nome}! Seu agendamento está marcado para ${agendamentoPreview.data} às ${agendamentoPreview.hora} (${agendamentoPreview.duracaoMinutos} min) - ${agendamentoPreview.produto.nome}.`
-    let finalPaymentLink = `https://pay.example.com/${agendamentoPreview.id}`
-
-    const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
-    if (!backendUrl) {
-      console.error('VITE_BACKEND_URL não configurado; abortando chamada ao backend')
-      // Mesmo sem backend, exibe modal ou redireciona
-      if (isClientView) {
-        window.location.href = finalPaymentLink
-      } else {
-        setPaymentLink(finalPaymentLink)
-        setShareMessage(`${resumoTexto} Link de pagamento: ${finalPaymentLink}`)
-        setShowModalPagamento(true)
-      }
-      return
-    }
-
-    // Monta payload esperado pelo backend
-    const payload = {
+    setAgendamentoPayload({
       nome: agendamentoPreview.cliente.nome,
       email: emailFinal,
       telefone: agendamentoPreview.cliente.telefone,
       data_hora: `${agendamentoPreview.data}T${agendamentoPreview.hora}:00`,
       produto_id: agendamentoPreview.produto.id,
+      produto_nome: agendamentoPreview.produto.nome,
+      valor: agendamentoPreview.produto.valor,
+      isEuro: (agendamentoPreview.produto as any).isEuro,
       duracao_minutos: agendamentoPreview.duracaoMinutos,
       status: agendamentoPreview.status,
-    }
-    console.log('Agendamento salvo no backend:', payload)
+    })
 
-    try {
-      const response = await fetch(`${backendUrl}/comercial/agendamento`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+    setShowConfirmacao(true)
+  }
 
-      if (response.status === 409) {
-        const body = await response.json().catch(() => ({}))
-        const msg = body?.message || ERRO.HORARIO_INDISPONIVEL
-        error(msg)
-        return
-      }
+  const handleSuccessAgendamento = (responseData: any) => {
+    setShowConfirmacao(false)
+    console.log(responseData)
+    
+    let finalPaymentLink = responseData.checkoutUrl || `https://pay.example.com/${agendamentoPreview?.id}`
+    const resumoTexto = `Oi ${agendamentoPayload.nome}! Seu agendamento está marcado para ${agendamentoPreview?.data} às ${agendamentoPreview?.hora} (${agendamentoPayload.duracao_minutos} min) - ${agendamentoPayload.produto_nome}.`
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}))
-        console.error('Erro ao salvar agendamento:', body)
-        error(body?.message || ERRO.AGENDAMENTO_FALHOU)
-        return
-      }
-
-      const responseData = await response.json().catch(() => ({}))
-      if (responseData && responseData.paymentLink) {
-        finalPaymentLink = responseData.paymentLink
-      }
-
-      console.log('Agendamento salvo no backend:', payload)
-    } catch (err) {
-      console.error('Erro ao salvar agendamento (API offline?), seguindo fluxo mock:', err)
-      // Fallback: continue
-    }
-
-    setAgendamentos([...agendamentos, agendamentoPreview])
+    setAgendamentos([...agendamentos, agendamentoPreview!])
 
     if (isClientView) {
-      window.location.href = finalPaymentLink
+      setPaymentLink(finalPaymentLink)
+      setShareMessage(resumoTexto)
+      setShowModalPagamento(true)
+      window.open(finalPaymentLink, '_blank')
     } else {
-      // Sucesso: prepara modal de pagamento/compartilhamento
       setPaymentLink(finalPaymentLink)
       setShareMessage(`${resumoTexto} Link de pagamento: ${finalPaymentLink}`)
       setShowModalPagamento(true)
     }
 
-    // Reset only if not redirecting (though redirect will navigate away anyway)
     if (!isClientView) {
       setDataSelecionada(undefined)
       setHoraSelecionada('')
@@ -475,9 +463,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const mostrarFluxo = passo === 'produto' || passo === 'calendario' || (passo === 'horario' && dataSelecionada) || passo === 'cliente' || passo === 'confirmacao'
 
   return (
-    <div className="max-w-6xl mx-auto py-8">
-      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento de Vendas</h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-8">Escolha o produto, selecione data e horário, e finalize o agendamento</p>
+    <div className="w-full bg-gray-50 dark:bg-neutral-900 min-h-screen">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento de Vendas</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-8">Escolha o produto, selecione data e horário, e finalize o agendamento</p>
 
 
       {/* Fluxo de agendamento: Produto → Data → Hora → Lead */}
@@ -701,51 +690,61 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           </div>
 
           <div className="lg:col-span-1 flex justify-center">
-            <div className="w-full max-w-md bg-gradient-to-br from-blue-300 to-white dark:from-blue-500/10 dark:to-neutral-800 rounded-xl border border-blue-200 dark:border-blue-500/30 p-6 shadow-sm sticky top-8">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">Resumo</h3>
-
-              {/* Data */}
-              {dataSelecionada && (
-                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {dataSelecionada.toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
+            <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 shadow-sm sticky top-8">
+              
+              {/* Header com Voltar e Título */}
+              <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-neutral-800 pb-4">
+                {passo !== 'produto' && (
                   <button
-                    onClick={handleRemoverData}
-                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                    aria-label="Remover data"
+                    onClick={handleVoltar}
+                    className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-500 transition-colors"
+                    aria-label="Voltar etapa"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
-                </div>
-              )}
+                )}
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resumo</h3>
+              </div>
 
-              {/* Hora */}
-              {horaSelecionada && (
-                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+              {/* Lead Info Fixed at Top - Sempre visível se houver cliente selecionado */}
+              {clienteSelecionado && (
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border border-gray-100 dark:border-neutral-800">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Agendado por</p>
                   <div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
+                    {clienteSelecionado.email && (
+                      <p className="text-xs text-gray-500">{clienteSelecionado.email}</p>
+                    )}
                   </div>
-                  <button
-                    onClick={handleRemoverHora}
-                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                    aria-label="Remover horário"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {/* Campo de Email quando não informado */}
+                  {!clienteSelecionado.email && (
+                    <div className="mt-3">
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-2">
+                        E-mail do Lead <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={emailTemporario}
+                        onChange={(e) => setEmailTemporario(e.target.value)}
+                        placeholder="email@exemplo.com"
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 ${!emailTemporario
+                          ? 'border-red-500 dark:border-red-500 focus:ring-red-500 ring-2 ring-red-200 dark:ring-red-500/30'
+                          : 'border-gray-300 dark:border-neutral-600 focus:ring-emerald-500'
+                          }`}
+                      />
+                      {!emailTemporario && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                          ⚠️ Preencha o e-mail do lead para continuar
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Produto */}
               {produtoSelecionado && (
-                <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+                <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
@@ -770,60 +769,51 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   </div>
                   <button
                     onClick={handleRemoverProduto}
-                    className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                    aria-label="Remover produto"
+                    className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                    aria-label="Alterar produto"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               )}
 
-              {/* Lead */}
-              {clienteSelecionado && (
-                <>
-                  <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lead</p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
-                      {clienteSelecionado.email ? (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
-                      ) : (
-                        <p className="text-sm text-red-600 dark:text-red-400 mt-1 italic">E-mail não informado</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleRemoverCliente}
-                      className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                      aria-label="Remover lead"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+              {/* Data */}
+              {dataSelecionada && (
+                <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {dataSelecionada.toLocaleDateString('pt-BR')}
+                    </p>
                   </div>
+                  <button
+                    onClick={handleRemoverData}
+                    className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                    aria-label="Alterar data"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
-                  {/* Campo de Email quando não informado */}
-                  {!clienteSelecionado.email && (
-                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700">
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-2">
-                        E-mail do Lead <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        value={emailTemporario}
-                        onChange={(e) => setEmailTemporario(e.target.value)}
-                        placeholder="email@exemplo.com"
-                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 ${!emailTemporario
-                          ? 'border-red-500 dark:border-red-500 focus:ring-red-500 ring-2 ring-red-200 dark:ring-red-500/30'
-                          : 'border-gray-300 dark:border-neutral-600 focus:ring-emerald-500'
-                          }`}
-                      />
-                      {!emailTemporario && (
-                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                          ⚠️ Preencha o e-mail do lead para continuar
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </>
+              {/* Hora */}
+              {horaSelecionada && (
+                <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
+                  </div>
+                  <button
+                    onClick={handleRemoverHora}
+                    className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                    aria-label="Alterar horário"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               )}
 
 
@@ -849,50 +839,39 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         </div>
       ) : (
         <div className="flex justify-center">
-          <div className="w-full max-w-xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-500/10 dark:to-neutral-800 rounded-xl border border-blue-200 dark:border-blue-500/30 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">Resumo</h3>
-            {/* Data */}
-            {dataSelecionada && (
-              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {dataSelecionada.toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-                <button
-                  onClick={handleRemoverData}
-                  className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                  aria-label="Remover data"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+          <div className="w-full max-w-xl bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 shadow-sm">
+            
+            {/* Header com Voltar e Título */}
+            <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-neutral-800 pb-4">
+              <button
+                onClick={handleVoltar}
+                className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-500 transition-colors"
+                aria-label="Voltar etapa"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resumo</h3>
+            </div>
 
-            {/* Hora */}
-            {horaSelecionada && (
-              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
+            {/* Lead Info Fixed at Top - Sempre visível se houver cliente selecionado */}
+            {clienteSelecionado && (
+              <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border border-gray-100 dark:border-neutral-800">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Agendado por</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
+                    {clienteSelecionado.email && (
+                      <p className="text-xs text-gray-500">{clienteSelecionado.email}</p>
+                    )}
+                  </div>
+                  {/* Ícone de lixeira removido conforme solicitado */}
                 </div>
-                <button
-                  onClick={handleRemoverHora}
-                  className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                  aria-label="Remover horário"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
               </div>
             )}
 
             {/* Produto */}
             {produtoSelecionado && (
-              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+              <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
                   <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
@@ -902,27 +881,47 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 </div>
                 <button
                   onClick={handleRemoverProduto}
-                  className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                  aria-label="Remover produto"
+                  className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                  aria-label="Alterar produto"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             )}
 
-            {/* Lead */}
-            {clienteSelecionado && (
-              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700 flex items-start justify-between gap-3">
+            {/* Data */}
+            {dataSelecionada && (
+              <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lead</p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{clienteSelecionado.email}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {dataSelecionada.toLocaleDateString('pt-BR')}
+                  </p>
                 </div>
                 <button
-                  onClick={handleRemoverCliente}
-                  disabled={!!preSelectedClient}
-                  className={`text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 ${preSelectedClient ? 'opacity-0 cursor-default' : ''}`}
-                  aria-label="Remover lead"
+                  onClick={handleRemoverData}
+                  className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                  aria-label="Alterar data"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Hora */}
+            {horaSelecionada && (
+              <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
+                </div>
+                <button
+                  onClick={handleRemoverHora}
+                  className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                  aria-label="Alterar horário"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -933,16 +932,16 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               <button
                 onClick={handleFinalizarAgendamento}
                 disabled={!agendamentoPreview}
-                className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${agendamentoPreview
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                className={`w-full py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${agendamentoPreview
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'}`}
               >
                 <Check className="h-5 w-5" />
                 Criar agendamento
               </button>
               {!agendamentoPreview && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                  Complete lead, data, horário e produto para liberar.
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-3">
+                  Complete todas as etapas para finalizar.
                 </p>
               )}
             </div>
@@ -1010,6 +1009,17 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         </div>
       )}
 
+      {showConfirmacao && agendamentoPayload && (
+        <AgendamentoConfirmacaoModal
+          isOpen={showConfirmacao}
+          onClose={() => setShowConfirmacao(false)}
+          onSuccess={handleSuccessAgendamento}
+          onError={(msg) => error(msg)}
+          payload={agendamentoPayload}
+          exchangeRate={exchangeRate}
+        />
+      )}
+      </div>
     </div>
   )
 }

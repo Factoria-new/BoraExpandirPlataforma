@@ -17,6 +17,11 @@ dotenv.config()
 const app = express()
 
 app.use(cors())
+// Rota de Webhook do Stripe precisa do corpo bruto (raw) para validar a assinatura
+app.post('/comercial/webhook/stripe', express.raw({ type: 'application/json' }), (req, res) => {
+    const ComercialController = require('./controllers/ComercialController').default
+    ComercialController.handleStripeWebhook(req, res)
+})
 app.use(express.json())
 app.use(morgan('dev'))
 

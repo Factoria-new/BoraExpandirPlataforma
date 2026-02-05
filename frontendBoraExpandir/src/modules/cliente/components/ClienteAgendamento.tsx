@@ -16,7 +16,7 @@ export function ClienteAgendamento({ client }: ClienteAgendamentoProps) {
     }
 
     return (
-        <div className="bg-white dark:bg-gray-900 min-h-screen">
+        <div className="bg-gray-50 dark:bg-neutral-900 min-h-screen">
             <Comercial1 preSelectedClient={comercialClient} isClientView={true} />
         </div>
     )
