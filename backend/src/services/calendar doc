@@ -1,0 +1,952 @@
+# Google Calendar
+
+Google Calendar is a time management tool providing scheduling features, event reminders, and integration with email and other apps for streamlined organization
+
+- **Category:** scheduling & booking
+- **Auth:** OAUTH2
+- **Tools:** 28
+- **Triggers:** 7
+- **Slug:** `GOOGLECALENDAR`
+- **Version:** 20260203_00
+
+## Tools
+
+### Insert Calendar into List
+
+**Slug:** `GOOGLECALENDAR_CALENDAR_LIST_INSERT`
+
+Inserts an existing calendar into the user's calendar list.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `background_color` | string | No | The background color of the calendar in the Web UI. (Hexadecimal color code) |
+| `color_id` | string | No | The color of the calendar. This is an ID referring to an entry in the calendarCore color palette. |
+| `color_rgb_format` | boolean | No | Whether to use the foregroundColor and backgroundColor fields to write the calendar colors (RGB). If this feature is used, the index-based colorId field will be set to the best matching option automatically. Optional. The default is False. |
+| `default_reminders` | array | No | The default reminders that the authenticated user has for this calendar. |
+| `foreground_color` | string | No | The foreground color of the calendar in the Web UI. (Hexadecimal color code) |
+| `hidden` | boolean | No | Whether the calendar has been hidden from the list. Default is False. |
+| `id` | string | Yes | The identifier of the calendar to insert. |
+| `notification_settings` | object | No | The notifications that the authenticated user is receiving for this calendar. |
+| `selected` | boolean | No | Whether the calendar is selected and visible in the calendar list. Default is True. |
+| `summary_override` | string | No | The summary that the authenticated user has set for this calendar. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Update Calendar List Entry
+
+**Slug:** `GOOGLECALENDAR_CALENDAR_LIST_UPDATE`
+
+Updates an existing entry on the user\'s calendar list.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `backgroundColor` | string | No | Hex color for calendar background. |
+| `calendar_id` | string | Yes | Calendar identifier. Use "primary" for the primary calendar. |
+| `colorId` | string | No | ID for calendar color from colors endpoint. |
+| `colorRgbFormat` | boolean | No | Whether to use RGB for foreground/background colors. |
+| `defaultReminders` | array | No | List of default reminders. |
+| `foregroundColor` | string | No | Hex color for calendar foreground. |
+| `hidden` | boolean | No | Whether calendar is hidden. |
+| `notificationSettings` | object | No | Notification settings for the calendar. |
+| `selected` | boolean | No | Whether calendar content shows in UI. |
+| `summaryOverride` | string | No | User-set summary for the calendar. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Delete Calendar
+
+**Slug:** `GOOGLECALENDAR_CALENDARS_DELETE`
+
+Deletes a secondary calendar. use calendars.clear for clearing all events on primary calendars.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Update Calendar
+
+**Slug:** `GOOGLECALENDAR_CALENDARS_UPDATE`
+
+Updates metadata for a calendar.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | Yes | Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `description` | string | No | Description of the calendar. Optional. |
+| `location` | string | No | Geographic location of the calendar as free-form text. Optional. |
+| `summary` | string | Yes | Title of the calendar. |
+| `timeZone` | string | No | The time zone of the calendar. (Formatted as an IANA Time Zone Database name, e.g. "Europe/Zurich".) Optional. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Clear Calendar
+
+**Slug:** `GOOGLECALENDAR_CLEAR_CALENDAR`
+
+Clears a primary calendar. this operation deletes all events associated with the primary calendar of an account.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | Calendar identifier. To retrieve calendar IDs call the `calendarList.list` method. If you want to access the primary calendar of the currently logged in user, use the "`primary`" keyword. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Create Event
+
+**Slug:** `GOOGLECALENDAR_CREATE_EVENT`
+
+Creates an event on a google calendar, needing rfc3339 utc start/end times (end after start) and write access to the calendar. by default, adds the organizer as an attendee unless exclude organizer is set to true.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attendees` | array | No | List of attendee emails (strings). |
+| `calendar_id` | string | No | Target calendar: 'primary' for the user's main calendar, or the calendar's email address. |
+| `create_meeting_room` | boolean | No | If true, a Google Meet link is created and added to the event. CRITICAL: As of 2024, this REQUIRES a paid Google Workspace account ($13+/month). Personal Gmail accounts will fail with 'Invalid conference type value' error. Solutions: 1) Upgrade to Workspace, 2) Use domain-wide delegation with Workspace user, 3) Use the new Google Meet REST API, or 4) Create events without conferences. See https://github.com/googleapis/google-api-nodejs-client/issues/3234 |
+| `description` | string | No | Description of the event. Can contain HTML. Optional. |
+| `eventType` | string ("birthday" | "default" | "focusTime" | "outOfOffice" | "workingLocation") | No | Type of the event, immutable post-creation. Supported types: 'birthday' (all-day with annual recurrence), 'default' (regular event), 'focusTime' (focus-time event), 'outOfOffice' (out-of-office event), 'workingLocation' (working location event). Note: 'fromGmail' events cannot be created via API. |
+| `event_duration_hour` | integer | No | Number of hours (0-24). Increase by 1 here rather than passing 60 in `event_duration_minutes` |
+| `event_duration_minutes` | integer | No | Duration in minutes (0-59 ONLY). NEVER use 60+ minutes - use event_duration_hour=1 instead. Maximum value is 59. |
+| `exclude_organizer` | boolean | No | If True, the organizer will NOT be added as an attendee. Default is False (organizer is included). |
+| `guestsCanInviteOthers` | boolean | No | Whether attendees other than the organizer can invite others to the event. |
+| `guestsCanSeeOtherGuests` | boolean | No | Whether attendees other than the organizer can see who the event's attendees are. |
+| `guests_can_modify` | boolean | No | If True, guests can modify the event. |
+| `location` | string | No | Geographic location of the event as free-form text. |
+| `recurrence` | array | No | List of RRULE, EXRULE, RDATE, EXDATE lines for recurring events. Supported frequencies are DAILY, WEEKLY, MONTHLY, YEARLY. |
+| `send_updates` | boolean | No | Defaults to True. Whether to send updates to the attendees. |
+| `start_datetime` | string | Yes | Naive date/time (YYYY-MM-DDTHH:MM:SS) with NO offsets or Z. e.g. '2025-01-16T13:00:00' |
+| `summary` | string | No | Summary (title) of the event. |
+| `timezone` | string | No | IANA timezone name (e.g., 'America/New_York'). Required if datetime is naive. If datetime includes timezone info (Z or offset), this field is optional and defaults to UTC. |
+| `transparency` | string ("opaque" | "transparent") | No | 'opaque' (busy) or 'transparent' (available). |
+| `visibility` | string ("default" | "public" | "private" | "confidential") | No | Event visibility: 'default', 'public', 'private', or 'confidential'. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Delete event
+
+**Slug:** `GOOGLECALENDAR_DELETE_EVENT`
+
+Deletes a specified event by `event id` from a google calendar (`calendar id`); this action is idempotent and raises a 404 error if the event is not found.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | No | Identifier of the Google Calendar (e.g., email address, specific ID, or 'primary' for the authenticated user's main calendar) from which the event will be deleted. |
+| `event_id` | string | Yes | Unique identifier of the event to delete, typically obtained upon event creation. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Create a calendar
+
+**Slug:** `GOOGLECALENDAR_DUPLICATE_CALENDAR`
+
+Creates a new, empty google calendar with the specified title (summary).
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `summary` | string | No | Title for the new Google Calendar to be created. If an empty string is provided, the calendar will be created without a title. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Get Event Instances
+
+**Slug:** `GOOGLECALENDAR_EVENTS_INSTANCES`
+
+Returns instances of the specified recurring event.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | Yes | Calendar identifier. To retrieve calendar IDs call the `calendarList.list` method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `eventId` | string | Yes | Recurring event identifier. |
+| `maxAttendees` | integer | No | The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned. Optional. |
+| `maxResults` | integer | No | Maximum number of events returned on one result page. By default the value is 250 events. The page size can never be larger than 2500 events. Optional. |
+| `originalStart` | string | No | The original start time of the instance in the result. Optional. |
+| `pageToken` | string | No | Token specifying which result page to return. Optional. |
+| `showDeleted` | boolean | No | Whether to include deleted events (with status equals "cancelled") in the result. Cancelled instances of recurring events will still be included if `singleEvents` is False. Optional. The default is False. |
+| `timeMax` | string | No | Upper bound (exclusive) for an event's start time to filter by. Optional. The default is not to filter by start time. Must be an RFC3339 timestamp with mandatory time zone offset. |
+| `timeMin` | string | No | Lower bound (inclusive) for an event's end time to filter by. Optional. The default is not to filter by end time. Must be an RFC3339 timestamp with mandatory time zone offset. |
+| `timeZone` | string | No | Time zone used in the response. Optional. The default is the time zone of the calendar. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### List Events
+
+**Slug:** `GOOGLECALENDAR_EVENTS_LIST`
+
+Returns events on the specified calendar.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `alwaysIncludeEmail` | boolean | No | Deprecated and ignored. |
+| `calendarId` | string | Yes | Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `eventTypes` | string | No | Event types to return. Optional. This parameter can be repeated multiple times to return events of different types. If unset, returns all event types. Acceptable values are: "birthday", "default", "focusTime", "fromGmail", "outOfOffice", "workingLocation". |
+| `iCalUID` | string | No | Specifies an event ID in the iCalendar format to be provided in the response. Optional. Use this if you want to search for an event by its iCalendar ID. |
+| `maxAttendees` | integer | No | The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned. Optional. |
+| `maxResults` | integer | No | Maximum number of events returned on one result page. The number of events in the resulting page may be less than this value, or none at all, even if there are more events matching the query. Incomplete pages can be detected by a non-empty nextPageToken field in the response. By default the value is 250 events. The page size can never be larger than 2500 events. Optional. |
+| `orderBy` | string | No | The order of the events returned in the result. Optional. The default is an unspecified, stable order. Acceptable values are: "startTime", "updated". |
+| `pageToken` | string | No | Token specifying which result page to return. Optional. |
+| `privateExtendedProperty` | string | No | Extended properties constraint specified as propertyName=value. Matches only private properties. This parameter might be repeated multiple times to return events that match all given constraints. |
+| `q` | string | No | Free text search terms to find events that match these terms in various fields. Optional. |
+| `sharedExtendedProperty` | string | No | Extended properties constraint specified as propertyName=value. Matches only shared properties. This parameter might be repeated multiple times to return events that match all given constraints. |
+| `showDeleted` | boolean | No | Whether to include deleted events (with status equals "cancelled") in the result. Optional. The default is False. |
+| `showHiddenInvitations` | boolean | No | Whether to include hidden invitations in the result. Optional. The default is False. |
+| `singleEvents` | boolean | No | Whether to expand recurring events into instances and only return single one-off events and instances of recurring events. Optional. The default is False. |
+| `syncToken` | string | No | Token obtained from the nextSyncToken field returned on the last page of results from the previous list request. Optional. The default is to return all entries. |
+| `timeMax` | string | No | Upper bound (exclusive) for an event's start time to filter by. Optional. The default is not to filter by start time. Must be an RFC3339 timestamp with mandatory time zone offset, for example, 2011-06-03T10:00:00-07:00, 2011-06-03T10:00:00Z. Milliseconds may be provided but are ignored. If timeMin is set, timeMax must be greater than timeMin. |
+| `timeMin` | string | No | Lower bound (exclusive) for an event's end time to filter by. Optional. The default is not to filter by end time. Must be an RFC3339 timestamp with mandatory time zone offset, for example, 2011-06-03T10:00:00-07:00, 2011-06-03T10:00:00Z. Milliseconds may be provided but are ignored. If timeMax is set, timeMin must be smaller than timeMax. |
+| `timeZone` | string | No | Time zone used in the response. Optional. The default is the user's primary time zone. |
+| `updatedMin` | string | No | Lower bound for an event's last modification time (as a RFC3339 timestamp) to filter by. When specified, entries deleted since this time will always be included regardless of showDeleted. Optional. The default is not to filter by last modification time. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Move Event
+
+**Slug:** `GOOGLECALENDAR_EVENTS_MOVE`
+
+Moves an event to another calendar, i.e., changes an event's organizer.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | Calendar identifier of the source calendar. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `destination` | string | Yes | Calendar identifier of the destination calendar. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `event_id` | string | Yes | Event identifier. To retrieve event identifiers call the events.list method. |
+| `send_updates` | string | No | Guests who should receive notifications about the change of the event's organizer. Acceptable values are: "all": Notifications are sent to all guests. "externalOnly": Notifications are sent to non-Google Calendar guests only. "none": No notifications are sent. This is the default value if left unspecified. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Watch Events
+
+**Slug:** `GOOGLECALENDAR_EVENTS_WATCH`
+
+Watch for changes to events resources.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `address` | string | Yes | The address where notifications are delivered for this channel. |
+| `calendarId` | string | Yes | Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `id` | string | Yes | A UUID or similar unique string that identifies this channel. |
+| `params` | object | No | Additional parameters controlling delivery channel behavior. Optional. |
+| `payload` | boolean | No | A Boolean value to indicate whether payload is wanted. Optional. |
+| `token` | string | No | An arbitrary string delivered to the target address with each notification delivered over this channel. Optional. |
+| `type` | string | No | The type of delivery mechanism used for this channel. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Find event
+
+**Slug:** `GOOGLECALENDAR_FIND_EVENT`
+
+Finds events in a specified google calendar using text query, time ranges (event start/end, last modification), and event types; ensure `timemin` is not chronologically after `timemax` if both are provided.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | No | Identifier of the Google Calendar to query. Use 'primary' for the primary calendar of the authenticated user, an email address for a specific user's calendar, or a calendar ID for other calendars. |
+| `event_types` | array | No | Event types to include: 'default' (regular event), 'focusTime' (focused work time), 'outOfOffice' (out-of-office time). |
+| `max_results` | integer | No | Maximum number of events per page (1-2500). |
+| `order_by` | string | No | Order of events: 'startTime' (ascending by start time) or 'updated' (ascending by last modification time). |
+| `page_token` | string | No | Token from a previous response's `nextPageToken` to fetch the subsequent page of results. |
+| `query` | string | No | Free-text search terms to find events. This query is matched against various event fields including summary, description, location, attendees' details (displayName, email), and organizer's details. |
+| `show_deleted` | boolean | No | Include deleted events (status 'cancelled') in the result. |
+| `single_events` | boolean | No | Expand recurring events into individual instances. If false, returns master recurring events. |
+| `timeMax` | string | No | Upper bound (exclusive) for an event's start time to filter by. Only events starting before this time are included. Accepts multiple formats: 1. RFC3339 timestamp (e.g., '2024-12-06T13:00:00Z') 2. Comma-separated date/time parts (e.g., '2024,12,06,13,00,00') 3. Simple datetime string (e.g., '2024-12-06 13:00:00') |
+| `timeMin` | string | No | Lower bound (exclusive) for an event's end time to filter by. Only events ending after this time are included. Accepts multiple formats: 1. RFC3339 timestamp (e.g., '2024-12-06T13:00:00Z') 2. Comma-separated date/time parts (e.g., '2024,12,06,13,00,00') 3. Simple datetime string (e.g., '2024-12-06 13:00:00') |
+| `updated_min` | string | No | Lower bound (exclusive) for an event's last modification time to filter by. Only events updated after this time are included. When specified, events deleted since this time are also included, regardless of the `show_deleted` parameter. Accepts multiple formats: 1. RFC3339 timestamp (e.g., '2024-12-06T13:00:00Z') 2. Comma-separated date/time parts (e.g., '2024,12,06,13,00,00') 3. Simple datetime string (e.g., '2024-12-06 13:00:00') |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Find free slots
+
+**Slug:** `GOOGLECALENDAR_FIND_FREE_SLOTS`
+
+Finds free/busy time slots in google calendars for specified calendars within a defined time range (defaults to the current day utc if `time min`/`time max` are omitted), enhancing busy intervals with event details; `time min` must precede `time max` if both are provided.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_expansion_max` | integer | No | Maximum calendars for which FreeBusy information is provided. Max allowed: 50. |
+| `group_expansion_max` | integer | No | Maximum calendar identifiers to return for a single group; exceeding this causes an error. Max allowed: 100. |
+| `items` | array | No | List of calendar identifiers (primary ID 'primary', user/calendar email, or unique calendar ID) to query for free/busy information. |
+| `time_max` | string | No | End datetime for the query interval. Accepts ISO, comma-separated, or simple datetime formats. |
+| `time_min` | string | No | Start datetime for the query interval. Accepts ISO, comma-separated, or simple datetime formats. |
+| `timezone` | string | No | IANA timezone identifier (e.g., 'America/New_York', 'Europe/London') for interpreting `time_min` and `time_max` if they lack timezone info, and for expanding recurring events. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Query Free/Busy Information
+
+**Slug:** `GOOGLECALENDAR_FREE_BUSY_QUERY`
+
+Returns free/busy information for a set of calendars.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarExpansionMax` | integer | No | Maximal number of calendars for which FreeBusy information is to be provided. Optional. Maximum value is 50. |
+| `groupExpansionMax` | integer | No | Maximal number of calendar identifiers to be provided for a single group. Optional. An error is returned for a group with more members than this value. Maximum value is 100. |
+| `items` | array | Yes | List of calendars and/or groups to query. |
+| `timeMax` | string | Yes | The end of the interval for the query formatted as per RFC3339. |
+| `timeMin` | string | Yes | The start of the interval for the query formatted as per RFC3339. |
+| `timeZone` | string | No | Time zone used in the response. Optional. The default is UTC. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Get Google Calendar
+
+**Slug:** `GOOGLECALENDAR_GET_CALENDAR`
+
+Retrieves a specific google calendar, identified by `calendar id`, to which the authenticated user has access.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | No | Identifier of the Google Calendar to retrieve. 'primary' (the default) represents the user's main calendar; other valid identifiers include the calendar's email address. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Get current date and time
+
+**Slug:** `GOOGLECALENDAR_GET_CURRENT_DATE_TIME`
+
+Gets the current date and time, allowing for a specific timezone offset.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `timezone` | number | No | Timezone offset from UTC in hours (e.g., 6 for UTC+6, -9 for UTC-9, 5.5 for UTC+5:30). Default 0 is UTC. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### List ACL Rules
+
+**Slug:** `GOOGLECALENDAR_LIST_ACL_RULES`
+
+Retrieves the list of access control rules (acls) for a specified calendar, providing the necessary 'rule id' values required for updating specific acl rules.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `max_results` | integer | No | Maximum number of entries returned on one result page. Optional. The default is 100. |
+| `page_token` | string | No | Token specifying which result page to return. Optional. |
+| `show_deleted` | boolean | No | Whether to include deleted ACLs in the result. Optional. The default is False. |
+| `sync_token` | string | No | Token obtained from the nextSyncToken field returned on the last page of a previous list operation. It makes the result of this list operation contain only entries that have changed since then. Optional. The default is to retrieve all entries. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### List Google Calendars
+
+**Slug:** `GOOGLECALENDAR_LIST_CALENDARS`
+
+Retrieves calendars from the user's google calendar list, with options for pagination and filtering.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `max_results` | integer | No | Maximum number of calendars to return per page. Max 250. |
+| `min_access_role` | string | No | Minimum access role for calendars returned. Valid values: 'freeBusyReader', 'owner', 'reader', 'writer'. |
+| `page_token` | string | No | Token for the page of results to return, from a previous response. |
+| `show_deleted` | boolean | No | Include deleted calendars in the result. |
+| `show_hidden` | boolean | No | Include calendars not typically shown in the UI. |
+| `sync_token` | string | No | Sync token from a previous list request to get only changed entries; showDeleted, showHidden, and pageToken are ignored if provided. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Patch Calendar
+
+**Slug:** `GOOGLECALENDAR_PATCH_CALENDAR`
+
+Partially updates (patches) an existing google calendar, modifying only the fields provided; `summary` is mandatory and cannot be an empty string, and an empty string for `description` or `location` clears them.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | Identifier of the Google Calendar to update; use 'primary' for the main calendar or a specific ID. |
+| `description` | string | No | New description for the calendar. |
+| `location` | string | No | New geographic location of the calendar (e.g., 'Paris, France'). |
+| `summary` | string | Yes | New title for the calendar; cannot be an empty string. |
+| `timezone` | string | No | New IANA Time Zone Database name for the calendar (e.g., 'Europe/Zurich', 'America/New_York'). |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Patch Event
+
+**Slug:** `GOOGLECALENDAR_PATCH_EVENT`
+
+Updates specified fields of an existing event in a google calendar using patch semantics (array fields like `attendees` are fully replaced if provided); ensure the `calendar id` and `event id` are valid and the user has write access to the calendar.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attendees` | array | No | List of email addresses for attendees. Replaces existing attendees. Provide an empty list to remove all. |
+| `calendar_id` | string | Yes | Identifier of the calendar. Use 'primary' for the primary calendar of the logged-in user. To find other calendar IDs, use the `calendarList.list` method. |
+| `conference_data_version` | integer | No | API client's conference data support version. Set to 1 to manage conference details (e.g., Google Meet links); 0 (default) ignores conference data. |
+| `description` | string | No | New description for the event; can include HTML. |
+| `end_time` | string | No | New end time (RFC3339 timestamp, e.g., '2024-07-01T11:00:00-07:00'). Uses `timezone` if provided, otherwise UTC. For all-day events, use YYYY-MM-DD format (exclusive end date). |
+| `event_id` | string | Yes | Identifier of the event to update. |
+| `location` | string | No | New geographic location (physical address or virtual meeting link). |
+| `max_attendees` | integer | No | Maximum attendees in response; does not affect invited count. If more, response includes organizer only. Must be positive. |
+| `rsvp_response` | string | No | RSVP response status for the authenticated user. Updates only the current user's response status without affecting other attendees. Possible values: 'needsAction', 'declined', 'tentative', 'accepted'. |
+| `send_updates` | string | No | Whether to send update notifications to attendees: 'all', 'externalOnly', or 'none'. Uses default user behavior if unspecified. |
+| `start_time` | string | No | New start time (RFC3339 timestamp, e.g., '2024-07-01T10:00:00-07:00'). Uses `timezone` if provided, otherwise UTC. For all-day events, use YYYY-MM-DD format. |
+| `summary` | string | No | New title for the event. |
+| `supports_attachments` | boolean | No | Client application supports event attachments. Set to `True` if so. |
+| `timezone` | string | No | IANA Time Zone Database name for start/end times (e.g., 'America/Los_Angeles'). Used if `start_time` and `end_time` are provided and not all-day dates; defaults to UTC if unset. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Quick Add Event
+
+**Slug:** `GOOGLECALENDAR_QUICK_ADD`
+
+Parses natural language text to quickly create a basic google calendar event with its title, date, and time, suitable for simple scheduling; does not support direct attendee addition or recurring events, and `calendar id` must be valid if not 'primary'.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | No | Identifier of the calendar for the event. Use 'primary' for the main calendar, or provide a specific calendar ID (e.g., email address). |
+| `send_updates` | string ("all" | "externalOnly" | "none") | No | Controls whether email notifications about the event creation are sent to attendees. |
+| `text` | string | No | Natural language input describing the event; Google Calendar parses this for event details like title, date, and time. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Remove attendee from event
+
+**Slug:** `GOOGLECALENDAR_REMOVE_ATTENDEE`
+
+Removes an attendee from a specified event in a google calendar; the calendar and event must exist.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attendee_email` | string | Yes | Email address of the attendee to remove; if the email does not match an existing attendee, the event remains unchanged. |
+| `calendar_id` | string | No | Identifier of the Google Calendar to which the event belongs; 'primary' signifies the user's main calendar. |
+| `event_id` | string | Yes | Unique identifier of the event. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### List Settings
+
+**Slug:** `GOOGLECALENDAR_SETTINGS_LIST`
+
+Returns all user settings for the authenticated user.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `maxResults` | integer | No | Maximum number of entries returned on one result page. By default the value is 100 entries. The page size can never be larger than 250 entries. |
+| `pageToken` | string | No | Token specifying which result page to return. |
+| `syncToken` | string | No | Token obtained from the nextSyncToken field returned on the last page of results from the previous list request. It makes the result of this list request contain only entries that have changed since then. If the syncToken expires, the server will respond with a 410 GONE response code and the client should clear its storage and perform a full synchronization without any syncToken. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Watch Settings
+
+**Slug:** `GOOGLECALENDAR_SETTINGS_WATCH`
+
+Watch for changes to settings resources.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `address` | string | Yes | The address where notifications are delivered for this channel. |
+| `id` | string | Yes | A UUID or similar unique string that identifies this channel. |
+| `params` | object | No | Additional parameters controlling delivery channel behavior. |
+| `token` | string | No | An arbitrary string delivered to the target address with each notification delivered over this channel. |
+| `type` | string | Yes | The type of delivery mechanism used for this channel. Valid values are "web_hook" (or "webhook"). |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Sync Events
+
+**Slug:** `GOOGLECALENDAR_SYNC_EVENTS`
+
+Synchronizes google calendar events, performing a full sync if no `sync token` is provided or if a 410 gone error (due to an expired token) necessitates it, otherwise performs an incremental sync for events changed since the `sync token` was issued.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | No | Google Calendar identifier; 'primary' refers to the authenticated user's main calendar. |
+| `event_types` | array | No | Filters events by specified types (e.g., 'default', 'focusTime', 'outOfOffice', 'workingLocation'). All types returned if omitted. |
+| `max_results` | integer | No | Max events per page (max 2500); Google Calendar's default is used if unspecified. |
+| `pageToken` | string | No | Token for paginating results, from a previous response's `nextPageToken`. |
+| `single_events` | boolean | No | If True, expands recurring events into individual instances (excluding master event); otherwise, Google's default handling applies. |
+| `sync_token` | string | No | Token for incremental sync, retrieving only changes since issued. A 410 GONE response indicates an expired token, requiring a full sync. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Update ACL Rule
+
+**Slug:** `GOOGLECALENDAR_UPDATE_ACL_RULE`
+
+Updates an access control rule for the specified calendar.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the "primary" keyword. |
+| `role` | string | Yes | The role assigned to the scope. Possible values are:  - "none" - Provides no access.  - "freeBusyReader" - Provides read access to free/busy information.  - "reader" - Provides read access to the calendar. Private events will appear to users with reader access, but event details will be hidden.  - "writer" - Provides read and write access to the calendar. Private events will appear to users with writer access, and event details will be visible.  - "owner" - Provides ownership of the calendar. This role has all of the permissions of the writer role with the additional ability to see and manipulate ACLs. |
+| `rule_id` | string | Yes | ACL rule identifier. |
+| `send_notifications` | boolean | No | Whether to send notifications about the calendar sharing change. Note that there are no notifications on access removal. Optional. The default is True. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+### Update Google event
+
+**Slug:** `GOOGLECALENDAR_UPDATE_EVENT`
+
+Updates an existing event by `event id` in a google calendar; this is a full put replacement, so provide all desired fields as unspecified ones may be cleared or reset.
+
+#### Input Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attendees` | array | No | List of attendee emails (strings). |
+| `calendar_id` | string | No | Identifier of the Google Calendar where the event resides. The value 'primary' targets the user's primary calendar. |
+| `create_meeting_room` | boolean | No | If true, a Google Meet link is created and added to the event. CRITICAL: As of 2024, this REQUIRES a paid Google Workspace account ($13+/month). Personal Gmail accounts will fail with 'Invalid conference type value' error. Solutions: 1) Upgrade to Workspace, 2) Use domain-wide delegation with Workspace user, 3) Use the new Google Meet REST API, or 4) Create events without conferences. See https://github.com/googleapis/google-api-nodejs-client/issues/3234 |
+| `description` | string | No | Description of the event. Can contain HTML. Optional. |
+| `eventType` | string ("birthday" | "default" | "focusTime" | "outOfOffice" | "workingLocation") | No | Type of the event, immutable post-creation. Supported types: 'birthday' (all-day with annual recurrence), 'default' (regular event), 'focusTime' (focus-time event), 'outOfOffice' (out-of-office event), 'workingLocation' (working location event). Note: 'fromGmail' events cannot be created via API. |
+| `event_duration_hour` | integer | No | Number of hours (0-24). Increase by 1 here rather than passing 60 in `event_duration_minutes` |
+| `event_duration_minutes` | integer | No | Duration in minutes (0-59 ONLY). NEVER use 60+ minutes - use event_duration_hour=1 instead. Maximum value is 59. |
+| `event_id` | string | Yes | The unique identifier of the event to be updated. |
+| `guestsCanInviteOthers` | boolean | No | Whether attendees other than the organizer can invite others to the event. |
+| `guestsCanSeeOtherGuests` | boolean | No | Whether attendees other than the organizer can see who the event's attendees are. |
+| `guests_can_modify` | boolean | No | If True, guests can modify the event. |
+| `location` | string | No | Geographic location of the event as free-form text. |
+| `recurrence` | array | No | List of RRULE, EXRULE, RDATE, EXDATE lines for recurring events. Supported frequencies are DAILY, WEEKLY, MONTHLY, YEARLY. |
+| `send_updates` | boolean | No | Defaults to True. Whether to send updates to the attendees. |
+| `start_datetime` | string | Yes | Naive date/time (YYYY-MM-DDTHH:MM:SS) with NO offsets or Z. e.g. '2025-01-16T13:00:00' |
+| `summary` | string | No | Summary (title) of the event. |
+| `timezone` | string | No | IANA timezone name (e.g., 'America/New_York'). Required if datetime is naive. If datetime includes timezone info (Z or offset), this field is optional and defaults to UTC. |
+| `transparency` | string ("opaque" | "transparent") | No | 'opaque' (busy) or 'transparent' (available). |
+| `visibility` | string ("default" | "public" | "private" | "confidential") | No | Event visibility: 'default', 'public', 'private', or 'confidential'. |
+
+#### Output
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `data` | object | Yes | Data from the action execution |
+| `error` | string | No | Error if any occurred during the execution of the action |
+| `successful` | boolean | Yes | Whether or not the action execution was successful or not |
+
+
+## Triggers
+
+### Attendee Response Changed
+
+**Slug:** `GOOGLECALENDAR_ATTENDEE_RESPONSE_CHANGED_TRIGGER`
+
+**Type:** poll
+
+Polling trigger that fires when any attendee's RSVP changes to
+    accepted, declined, or tentative. Returns attendee info and current status.
+
+#### Configuration
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | No | The unique identifier for the calendar |
+| `interval` | number | No | Periodic Interval to Check for Updates & Send a Trigger in Minutes |
+| `showDeleted` | boolean | No | Whether to include deleted events in the results |
+
+#### Payload
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attendee_email` | string | No | Email of the attendee whose RSVP changed |
+| `attendee_name` | string | No | Display name of the attendee |
+| `calendar_id` | string | Yes | The calendar identifier |
+| `event_html_link` | string | No | Link to the event in Google Calendar |
+| `event_id` | string | Yes | The unique identifier of the event |
+| `event_summary` | string | No | Event title/summary |
+| `previous_response_status` | string | No | Previous RSVP status |
+| `response_status` | string | Yes | Current RSVP status (accepted, declined, tentative) |
+
+### Event Canceled or Deleted
+
+**Slug:** `GOOGLECALENDAR_EVENT_CANCELED_DELETED_TRIGGER`
+
+**Type:** poll
+
+Triggers when a Google Calendar event is cancelled or deleted.
+    Returns minimal data: event_id, summary (if available), and cancellation timestamp.
+
+#### Configuration
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | No | The unique identifier for the calendar to monitor |
+| `interval` | number | No | Periodic Interval to Check for Updates & Send a Trigger in Minutes |
+
+#### Payload
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `cancelled_at` | string | No | Cancellation timestamp (from event.updated) |
+| `event_id` | string | Yes | The unique identifier of the event |
+| `summary` | string | No | Event title/summary (may be missing for cancelled events) |
+
+### Event Starting Soon
+
+**Slug:** `GOOGLECALENDAR_EVENT_STARTING_SOON_TRIGGER`
+
+**Type:** poll
+
+Triggers when a calendar event is within a configured number of minutes from starting.
+    Includes countdown window, start time, and event metadata.
+
+#### Configuration
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | No | The unique identifier for the calendar to monitor |
+| `countdown_window_minutes` | integer | No | Look-ahead window (in minutes) for upcoming events to evaluate |
+| `include_all_day` | boolean | No | Whether to consider all-day events (default False) |
+| `interval` | number | No | Periodic Interval to Check for Updates & Send a Trigger in Minutes |
+| `minutes_before_start` | integer | No | Trigger when an event is within this many minutes from starting |
+
+#### Payload
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attendees` | array | No | List of attendees |
+| `calendar_id` | string | Yes | The calendar identifier |
+| `countdown_window_minutes` | integer | Yes | Countdown window used for this trigger |
+| `creator_email` | string | No | Email of the event creator |
+| `description` | string | No | Event description |
+| `event_id` | string | Yes | The unique identifier of the event |
+| `hangout_link` | string | No | Google Meet link for the conference, if available |
+| `html_link` | string | No | Link to the event in Google Calendar |
+| `location` | string | No | Event location |
+| `minutes_until_start` | number | No | Minutes remaining until event starts (>= 0) |
+| `organizer_email` | string | No | Email of the event organizer |
+| `start_time` | string | No | Event start time in ISO format |
+| `start_timestamp` | number | No | Event start time as UNIX epoch timestamp (UTC) |
+| `summary` | string | No | Event title/summary |
+
+### Calendar Event Changes
+
+**Slug:** `GOOGLECALENDAR_GOOGLE_CALENDAR_EVENT_CHANGE_TRIGGER`
+
+**Type:** webhook
+
+**SOON TO BE DEPRECATED** - Use Calendar Event Sync (polling trigger) instead.
+    Real-time webhook trigger for calendar event changes. Returns event metadata only.
+    For full event data, use Calendar Event Sync (polling trigger).
+
+#### Configuration
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | No | The unique identifier for the calendar |
+| `ttl` | integer | No | The time-to-live in seconds for the notification channel |
+
+#### Payload
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `channel_id` | string | Yes | The unique identifier passed to identify this channel |
+| `resource_id` | string | Yes | The unique identifier of the resource |
+| `resource_state` | string | Yes | The state of the resource |
+| `resource_url` | string | Yes | The url for the resource |
+
+### Event Created
+
+**Slug:** `GOOGLECALENDAR_GOOGLE_CALENDAR_EVENT_CREATED_TRIGGER`
+
+**Type:** poll
+
+Polling trigger that fires when a new calendar event is created.
+    Returns event ID, summary, start/end times, and organizer info.
+
+#### Configuration
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | No | The unique identifier for the calendar |
+| `interval` | number | No | Periodic Interval to Check for Updates & Send a Trigger in Minutes |
+| `showDeleted` | boolean | No | Whether to include deleted events in the results |
+
+#### Payload
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | The calendar identifier |
+| `end_time` | string | No | Event end time in ISO format |
+| `event_id` | string | Yes | The unique identifier of the event |
+| `organizer_email` | string | No | Email of the event organizer |
+| `organizer_name` | string | No | Name of the event organizer |
+| `start_time` | string | No | Event start time in ISO format |
+| `summary` | string | No | Event title/summary |
+
+### Calendar Event Sync
+
+**Slug:** `GOOGLECALENDAR_GOOGLE_CALENDAR_EVENT_SYNC_TRIGGER`
+
+**Type:** poll
+
+Polling trigger that returns full event data including details, attendees, and metadata.
+    For real-time notifications with basic info, use Calendar Event Changes (webhook).
+
+#### Configuration
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | No | The unique identifier for the calendar |
+| `interval` | number | No | Periodic Interval to Check for Updates & Send a Trigger in Minutes |
+| `showDeleted` | boolean | No | Whether to include deleted events in the results |
+
+#### Payload
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attendees` | array | No | List of attendees |
+| `calendar_id` | string | Yes | The calendar identifier |
+| `conference_data` | object | No | Conference data structure containing details about the meeting |
+| `created_at` | string | No | When the event was created |
+| `creator_email` | string | No | Email of the event creator |
+| `creator_name` | string | No | Name of the event creator |
+| `description` | string | No | Event description |
+| `end_time` | string | No | Event end time in ISO format |
+| `event_id` | string | Yes | The unique identifier of the event |
+| `event_type` | string | Yes | Type of change: created, updated, or deleted |
+| `hangout_link` | string | No | Google Meet link for the conference, if available |
+| `html_link` | string | No | Link to the event in Google Calendar |
+| `location` | string | No | Event location |
+| `organizer_email` | string | No | Email of the event organizer |
+| `organizer_name` | string | No | Name of the event organizer |
+| `recurring_event_id` | string | No | ID of recurring event if applicable |
+| `start_time` | string | No | Event start time in ISO format |
+| `status` | string | No | Event status (confirmed, tentative, cancelled) |
+| `summary` | string | No | Event title/summary |
+| `updated_at` | string | No | When the event was last updated |
+| `visibility` | string | No | Event visibility |
+
+### Event Updated
+
+**Slug:** `GOOGLECALENDAR_GOOGLE_CALENDAR_EVENT_UPDATED_TRIGGER`
+
+**Type:** poll
+
+Triggers when an existing Google Calendar event is modified. Returns the event ID,
+    change type, and the specific fields that changed with their previous and new values.
+
+#### Configuration
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendarId` | string | No | The unique identifier for the calendar |
+| `interval` | number | No | Periodic Interval to Check for Updates & Send a Trigger in Minutes |
+| `showDeleted` | boolean | No | Whether to include deleted (cancelled) events in the results |
+| `tracked_fields` | array | No | List of event fields to track for changes. start and end are compared as RFC3339 strings (preferring dateTime over date). Attendees are compared by email, displayName, responseStatus, and optional flag. |
+
+#### Payload
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `calendar_id` | string | Yes | The calendar identifier |
+| `change_type` | string | No | Type of change. Always 'updated' for this trigger |
+| `event_id` | string | Yes | The unique identifier of the event |
+| `updated_at` | string | No | When the event was last updated (RFC3339) |
+| `updated_fields` | object | Yes | Dictionary of changed fields with old and new values |
