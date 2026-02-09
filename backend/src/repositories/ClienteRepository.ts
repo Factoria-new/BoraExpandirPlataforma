@@ -557,6 +557,20 @@ class ClienteRepository {
 
         return data || []
     }
+
+    async getAllClientes() {
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('*')
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar todos os clientes:', error)
+            throw error
+        }
+
+        return data || []
+    }
 }
 
 export default new ClienteRepository()

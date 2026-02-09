@@ -658,6 +658,25 @@ class ClienteController {
       })
     }
   }
+
+  // GET /cliente/clientes
+  async getAllClientes(req: any, res: any) {
+    try {
+      const clientes = await ClienteRepository.getAllClientes()
+
+      return res.status(200).json({
+        message: 'Clientes recuperados com sucesso',
+        data: clientes,
+        total: clientes.length
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar todos os clientes:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar todos os clientes',
+        error: error.message
+      })
+    }
+  }
 }
 
 export default new ClienteController()

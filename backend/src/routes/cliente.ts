@@ -35,6 +35,7 @@ cliente.post('/attstatusbywpp', ClienteController.AttStatusClientebyWpp.bind(Cli
 cliente.post('/uploadDoc', upload.single('file'), ClienteController.uploadDoc.bind(ClienteController))
 
 cliente.get('/clientesbyparceiro/:parceiroId', ClienteController.getByParceiro.bind(ClienteController))
+cliente.get('/clientes', ClienteController.getAllClientes.bind(ClienteController))
 
 // Rotas de documentos
 cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
