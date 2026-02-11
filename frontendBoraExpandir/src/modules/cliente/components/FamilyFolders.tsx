@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { FamilyFolderCard } from './FamilyFolderCard'
+import { FamilyFolderCard } from './MemberFolderCard'
 import { InitialUploadModal } from './InitialUploadModal'
 import { Document as ClientDocument, RequiredDocument } from '../types'
 import { ClipboardList, Clock, CheckCircle2, AlertCircle } from 'lucide-react'

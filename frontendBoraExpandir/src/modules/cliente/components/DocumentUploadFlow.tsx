@@ -30,10 +30,10 @@ export function DocumentUploadFlow({
 
     const handleUpload = async (file: File, documentType: string, memberId: string, documentoId?: string) => {
         // Comprimir arquivo antes do upload
-        const compressedFile = await compressFile(file)
+        //const compressedFile = await compressFile(file)
 
         const formData = new FormData()
-        formData.append('file', compressedFile)
+        formData.append('file', file)
         formData.append('clienteId', clienteId)
         formData.append('documentType', documentType)
         formData.append('memberId', memberId)

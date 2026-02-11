@@ -10,5 +10,22 @@ export const clienteService = {
     
     const result = await response.json();
     return result.data || [];
+  },
+
+  async updateDocumentoStatus(documentoId: string, status: string) {
+    const response = await fetch(`${API_BASE_URL}/cliente/documento/${documentoId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Falha ao atualizar status do documento');
+    }
+
+    return response.json();
   }
 };

@@ -223,6 +223,7 @@ class ClienteController {
         fileBuffer: file.buffer,
         contentType: file.mimetype
       })
+      console.log('Upload result:', uploadResult)
 
       let documentoRecord;
 
@@ -380,7 +381,8 @@ class ClienteController {
 
       const validStatuses = [
         'PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE',
-        'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'APPROVED', 'REJECTED'
+        'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'WAITING_TRANSLATION_QUOTE', 
+        'WAITING_QUOTE_APPROVAL', 'APPROVED', 'REJECTED'
       ];
 
       if (!status || !validStatuses.includes(status)) {

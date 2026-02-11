@@ -91,6 +91,19 @@ juridico.delete('/formularios/:formularioId', JuridicoController.deleteFormulari
 // Atualizar status do formulário do cliente (aprovar/rejeitar)
 juridico.patch('/formulario-cliente/:id/status', JuridicoController.updateFormularioClienteStatus.bind(JuridicoController))
 
+// =============================================
+// ROTAS DE NOTAS DO JURÍDICO
+// =============================================
+
+// Criar nota
+juridico.post('/notas', JuridicoController.createNote.bind(JuridicoController))
+
+// Buscar notas de um cliente
+juridico.get('/notas/:clienteId', JuridicoController.getNotes.bind(JuridicoController))
+
+// Deletar nota
+juridico.delete('/notas/:noteId', JuridicoController.deleteNote.bind(JuridicoController))
+
 export default juridico
 
 

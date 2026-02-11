@@ -16,7 +16,7 @@ class DocumentsRepository {
     const objectPath = `${basePath}/${uniqueName}`
 
     const { data, error } = await supabase.storage
-          .from('documents')
+          .from('documentos')
           .upload(`public/${file.name}`, file.content, {
             contentType: file.type || 'application/octet-stream',
             upsert: false,
@@ -26,7 +26,7 @@ class DocumentsRepository {
         throw new Error(`Erro ao salvar no bucket: ${error.message}`  )
       }
 
-    const publicUrlData = supabase.storage.from('documents').getPublicUrl(objectPath)
+    const publicUrlData = supabase.storage.from('documentos').getPublicUrl(objectPath)
 
     return {
       path: data?.path || objectPath,

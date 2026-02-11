@@ -120,6 +120,8 @@ class JuridicoRepository {
         }))
     }
 
+
+
     // Listar processos sem responsável (vagos)
     async getProcessosSemResponsavel(): Promise<any[]> {
         const { data, error } = await supabase
@@ -569,6 +571,82 @@ class JuridicoRepository {
         }
 
         return data
+    }
+
+    // =============================================
+    // GESTÃO DE NOTAS DO JURÍDICO
+    // =============================================
+
+    // Criar uma nova nota
+    async createNote(params: {
+        clienteId: string
+        processoId?: string
+        etapa?: string
+        autorId: string
+        texto: string
+    }): Promise<any> {
+        console.log('[JuridicoRepository] Tentando inserir nota no Supabase...')
+        
+        const { data, error } = await supabase
+            .from('notas_juridico')
+            .insert([{
+                cliente_id: params.clienteId,
+                processo_id: params.processoId || null,
+                etapa: params.etapa || null,
+                autor_id: params.autorId,
+                texto: params.texto
+            }])
+            .select(`
+                *,
+                autor:profiles!autor_id (
+                    id,
+                    full_name
+                )
+            `)
+            .single()
+
+        if (error) {
+            console.error('[JuridicoRepository] Erro do Supabase ao inserir nota:', error)
+            throw error
+        }
+
+        console.log('[JuridicoRepository] Nota inserida com sucesso:', data?.id)
+        return data
+    }
+
+    // Buscar todas as notas de um cliente
+    async getNotesByClienteId(clienteId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('notas_juridico')
+            .select(`
+                *,
+                autor:profiles!autor_id (
+                    id,
+                    full_name
+                )
+            `)
+            .eq('cliente_id', clienteId)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar notas jurídicas:', error)
+            throw error
+        }
+
+        return data || []
+    }
+
+    // Deletar uma nota
+    async deleteNote(noteId: string): Promise<void> {
+        const { error } = await supabase
+            .from('notas_juridico')
+            .delete()
+            .eq('id', noteId)
+
+        if (error) {
+            console.error('Erro ao deletar nota jurídica:', error)
+            throw error
+        }
     }
 }
 

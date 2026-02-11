@@ -24,7 +24,7 @@ interface CreateDocumentoParams {
     publicUrl?: string
     contentType?: string
     tamanho?: number
-    status?: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED'
+    status?: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'WAITING_TRANSLATION_QUOTE' | 'APPROVED' | 'REJECTED'
     dependenteId?: string
 }
 
@@ -40,7 +40,7 @@ interface DocumentoRecord {
     public_url: string | null
     content_type: string | null
     tamanho: number | null
-    status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED'
+    status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'WAITING_TRANSLATION_QUOTE' | 'APPROVED' | 'REJECTED'
     motivo_rejeicao: string | null
     analisado_por: string | null
     analisado_em: string | null
@@ -271,7 +271,7 @@ class ClienteRepository {
     // Atualizar status do documento
     async updateDocumentoStatus(
         documentoId: string,
-        status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED',
+        status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'WAITING_TRANSLATION_QUOTE' | 'APPROVED' | 'REJECTED',
         motivoRejeicao?: string,
         analisadoPor?: string,
         apostilado?: boolean,
@@ -561,7 +561,15 @@ class ClienteRepository {
     async getAllClientes() {
         const { data, error } = await supabase
             .from('clientes')
-            .select('*')
+            .select(`
+                *,
+                processos (
+                    id,
+                    tipo_servico,
+                    status,
+                    etapa_atual
+                )
+            `)
             .order('created_at', { ascending: false })
 
         if (error) {

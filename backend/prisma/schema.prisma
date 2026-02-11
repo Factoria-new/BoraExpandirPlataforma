@@ -52,6 +52,8 @@ enum StatusDocumento {
   ANALYZING_APOSTILLE   // Validando apostilamento (jurídico)
   WAITING_TRANSLATION   // Aguardando tradução (cliente)
   ANALYZING_TRANSLATION // Validando tradução (jurídico)
+  WAITING_TRANSLATION_QUOTE // Aguardando orçamento de tradução
+  WAITING_QUOTE_APPROVAL    // Aguardando aprovação de orçamento
   APPROVED              // Aprovado
   REJECTED              // Rejeitado
 }

@@ -6,10 +6,12 @@ import OrcamentosPage from './components/OrcamentosPage'
 import FilaDeTrabalho from './components/FilaDeTrabalho'
 import EntreguesPage from './components/EntreguesPage'
 import PagamentosPage from './components/PagamentosPage'
-import { FileText, Clock, CheckCircle2, DollarSign, Settings } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, DollarSign, Settings, Loader2 } from 'lucide-react'
 import type { TraducaoItem } from './types'
 import type { OrcamentoItem, OrcamentoFormData } from './types/orcamento'
 import { Config } from '../../components/ui/Config'
+import { traducoesService } from './services/traducoesService'
+import { useEffect } from 'react'
 
 
 const mockTraducoes: TraducaoItem[] = [
@@ -65,73 +67,44 @@ const mockTraducoes: TraducaoItem[] = [
   },
 ]
 
-const mockOrcamentos: OrcamentoItem[] = [
-  {
-    id: '1',
-    documentoNome: 'Certidão de Casamento',
-    clienteNome: 'João Silva',
-    clienteEmail: 'joao.silva@email.com',
-    clienteTelefone: '(11) 98765-4321',
-    parIdiomas: { origem: 'PT', destino: 'EN' },
-    numeroPaginas: 2,
-    prazoDesejado: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    observacoes: 'Preciso da tradução juramentada com urgência',
-    status: 'pendente',
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    documentoNome: 'Diploma Universitário',
-    clienteNome: 'Maria Santos',
-    clienteEmail: 'maria.santos@email.com',
-    clienteTelefone: '(21) 99876-5432',
-    parIdiomas: { origem: 'PT', destino: 'IT' },
-    numeroPaginas: 1,
-    numeroPalavras: 300,
-    prazoDesejado: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pendente',
-    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    documentoNome: 'Contrato de Trabalho',
-    clienteNome: 'Carlos Oliveira',
-    clienteEmail: 'carlos@email.com',
-    clienteTelefone: '(31) 97654-3210',
-    parIdiomas: { origem: 'PT', destino: 'ES' },
-    numeroPaginas: 5,
-    numeroPalavras: 1200,
-    prazoDesejado: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    observacoes: 'Tradução simples, não precisa ser juramentada',
-    status: 'respondido',
-    valorOrcamento: 250.00,
-    prazoEntrega: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '4',
-    documentoNome: 'Histórico Escolar',
-    clienteNome: 'Ana Costa',
-    clienteEmail: 'ana.costa@email.com',
-    clienteTelefone: '(41) 96543-2109',
-    parIdiomas: { origem: 'PT', destino: 'EN' },
-    numeroPaginas: 3,
-    prazoDesejado: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'aceito',
-    valorOrcamento: 180.00,
-    prazoEntrega: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-]
 
 export default function Tradutora() {
   const [traducoes, setTraducoes] = useState<TraducaoItem[]>(mockTraducoes)
-  const [orcamentos, setOrcamentos] = useState<OrcamentoItem[]>(mockOrcamentos)
+  const [orcamentos, setOrcamentos] = useState<OrcamentoItem[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    fetchOrcamentos()
+  }, [])
+
+  const fetchOrcamentos = async () => {
+    try {
+      setIsLoading(true)
+      const data = await traducoesService.getOrcamentosPendentes()
+      
+      const mappedOrcamentos: OrcamentoItem[] = data.map((item: any) => ({
+        id: item.id,
+        documentoNome: item.nome_original,
+        clienteNome: item.clientes?.nome || 'N/A',
+        parIdiomas: { origem: 'PT', destino: 'IT' }, // Default for now
+        status: 'pendente',
+        storagePath: item.storage_path,
+        publicUrl: item.public_url,
+        documentoId: item.id,
+        created_at: item.criado_em,
+        updated_at: item.atualizado_em,
+        prazoDesejado: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default 7 days from now
+      }))
+
+      setOrcamentos([...mappedOrcamentos])
+
+    } catch (error) {
+      console.error('Erro ao buscar orçamentos:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleSubmitTraducao = (traducaoId: string, arquivo: File) => {
     setTraducoes(prev =>
@@ -144,22 +117,29 @@ export default function Tradutora() {
     console.log(`Tradução ${traducaoId} enviada:`, arquivo.name)
   }
 
-  const handleResponderOrcamento = (orcamentoId: string, dados: OrcamentoFormData) => {
-    setOrcamentos(prev =>
-      prev.map(o =>
-        o.id === orcamentoId
-          ? {
-              ...o,
-              status: 'respondido' as const,
-              valorOrcamento: dados.valorOrcamento,
-              prazoEntrega: dados.prazoEntrega,
-              ...(dados.observacoes && { observacoes: dados.observacoes }),
-              updated_at: new Date().toISOString(),
-            }
-          : o
+  const handleResponderOrcamento = async (orcamentoId: string, dados: OrcamentoFormData) => {
+    try {
+      await traducoesService.responderOrcamento(dados)
+      
+      setOrcamentos(prev =>
+        prev.map(o =>
+          o.id === orcamentoId
+            ? {
+                ...o,
+                status: 'respondido' as const,
+                valorOrcamento: dados.valorOrcamento,
+                prazoEntrega: dados.prazoEntrega,
+                ...(dados.observacoes && { observacoes: dados.observacoes }),
+                updated_at: new Date().toISOString(),
+              }
+            : o
+        )
       )
-    )
-    console.log(`Orçamento ${orcamentoId} respondido:`, dados)
+      console.log(`Orçamento ${orcamentoId} respondido com sucesso no banco:`, dados)
+    } catch (error) {
+      console.error(`Erro ao responder orçamento ${orcamentoId}:`, error)
+      alert('Erro ao enviar orçamento. Verifique o console para mais detalhes.')
+    }
   }
 
   const sidebarGroups: SidebarGroup[] = [
@@ -196,6 +176,11 @@ export default function Tradutora() {
       )}
 
       <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
+        {isLoading && (
+          <div className="fixed top-4 right-4 z-50 bg-white dark:bg-neutral-800 p-2 rounded-full shadow-lg border border-gray-200 dark:border-neutral-700">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+          </div>
+        )}
         <Routes>
           <Route path="/" element={<Navigate to="/tradutor/orcamentos" replace />} />
           <Route path="/orcamentos" element={<OrcamentosPage orcamentos={orcamentos} onResponderOrcamento={handleResponderOrcamento} />} />

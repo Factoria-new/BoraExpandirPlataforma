@@ -9,6 +9,8 @@ import { FormsDeclarationsCard } from './FormsDeclarationsCard'
 import { compressFile } from '../../../utils/compressFile'
 import { clienteService } from '../services/clienteService'
 import { UploadConfirmModal } from './UploadConfirmModal'
+import { ClientOrcamentoModal } from './ClientOrcamentoModal'
+import { DollarSign } from 'lucide-react'
 
 interface FamilyMember {
   id: string
@@ -28,6 +30,7 @@ interface FamilyFolderCardProps {
   onOpenUploadModal: () => void  // New prop to open initial upload modal
   onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
   onDelete: (documentId: string) => void
+  onRefresh?: () => void
 }
 
 // Stage configuration - WITHOUT "pending" stage
@@ -93,7 +96,8 @@ export function FamilyFolderCard({
   onToggle,
   onOpenUploadModal,
   onUpload,
-  onDelete
+  onDelete,
+  onRefresh
 }: FamilyFolderCardProps) {
   const [uploadingType, setUploadingType] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
@@ -111,6 +115,14 @@ export function FamilyFolderCard({
     isReplacement?: boolean
     documentoId?: string
   } | null>(null)
+  
+  const [showQuoteModal, setShowQuoteModal] = useState(false)
+  const [selectedDocForQuote, setSelectedDocForQuote] = useState<ClientDocument | null>(null)
+  const [isRequestingQuote, setIsRequestingQuote] = useState(false)
+  const [requestedSuccessfully, setRequestedSuccessfully] = useState(false)
+  
+  const [showClientQuoteModal, setShowClientQuoteModal] = useState(false)
+  const [selectedDocForClientQuote, setSelectedDocForClientQuote] = useState<ClientDocument | null>(null)
   
   // Estado para armazenar IDs de formulários já enviados
   const [sentFormularioIds, setSentFormularioIds] = useState<Set<string>>(new Set())
@@ -162,7 +174,7 @@ export function FamilyFolderCard({
     }
 
     // Se está em qualquer sub-etapa de tradução ou aprovado com apostila mas sem tradução
-    if (status?.includes('translation') || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
+    if (status?.includes('translation') || status === 'waiting_quote_approval' || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
       return 'translation';
     }
 
@@ -394,6 +406,36 @@ export function FamilyFolderCard({
     } finally {
       setIsUploading(false)
     }
+  }
+
+  const handleRequestTranslation = async () => {
+    if (!selectedDocForQuote) return
+
+    try {
+      setIsRequestingQuote(true)
+      await clienteService.updateDocumentoStatus(selectedDocForQuote.id, 'WAITING_TRANSLATION_QUOTE')
+      
+      setRequestedSuccessfully(true)
+
+    } catch (error: any) {
+      console.error('Erro ao solicitar tradução:', error)
+      alert(error.message || 'Erro ao solicitar tradução')
+    } finally {
+      setIsRequestingQuote(false)
+    }
+  }
+
+  const handleCloseQuoteModal = () => {
+    if (requestedSuccessfully) {
+      if (onRefresh) {
+        onRefresh()
+      } else {
+        window.location.reload()
+      }
+    }
+    setShowQuoteModal(false)
+    setSelectedDocForQuote(null)
+    setRequestedSuccessfully(false)
   }
 
   // Handle card click - now always toggles
@@ -946,6 +988,57 @@ export function FamilyFolderCard({
                                               <span>Em Análise</span>
                                             </div>
                                           )}
+
+                                          {/* Translate Request Quote Button */}
+                                          {(doc?.status === 'waiting_translation' || (doc?.status === 'approved' && doc.isApostilled)) && doc?.status !== 'waiting_translation_quote' && (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700 gap-1.5"
+                                              onClick={() => {
+                                                setSelectedDocForQuote(doc)
+                                                setShowQuoteModal(true)
+                                              }}
+                                              disabled={isUploading || isRequestingQuote}
+                                            >
+                                              <FileText className="h-3 w-3" />
+                                              Solicitar Tradução
+                                            </Button>
+                                          )}
+
+                                          {/* WAITING_QUOTE_APPROVAL stage actions */}
+                                          {doc?.status?.toLowerCase() === 'waiting_quote_approval' && (
+                                            <div className="flex gap-2">
+                                              <Button
+                                                size="sm"
+                                                className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                                                onClick={() => {
+                                                  setSelectedDocForClientQuote(doc)
+                                                  setShowClientQuoteModal(true)
+                                                }}
+                                              >
+                                                <DollarSign className="h-3 w-3" />
+                                                Ver Orçamento
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 text-xs border-gray-300 gap-1.5 hover:bg-gray-50 bg-white"
+                                                onClick={() => handleUploadClick(inputId)}
+                                                disabled={isUploading}
+                                              >
+                                                <Upload className="h-3 w-3" />
+                                                Substituir
+                                              </Button>
+                                            </div>
+                                          )}
+
+                                          {doc?.status?.toLowerCase() === 'waiting_translation_quote' && (
+                                            <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
+                                              <Clock className="h-4 w-4" />
+                                              <span>Orçamento Solicitado</span>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
 
@@ -1098,6 +1191,111 @@ export function FamilyFolderCard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Solicitação de Orçamento de Tradução */}
+      {showQuoteModal && selectedDocForQuote && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !isRequestingQuote && handleCloseQuoteModal()}
+          />
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {!requestedSuccessfully ? (
+              <>
+                <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center">
+                      <FileText className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">
+                        Solicitar Tradução
+                      </h3>
+                      <p className="text-purple-100 text-sm mt-1">
+                        Orçamento de tradução juramentada
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+                    <p className="text-sm text-purple-900 dark:text-purple-100 font-medium">
+                      Você está solicitando um orçamento de tradução para o documento:
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="font-bold">{selectedDocForQuote.fileName || getDocumentName(selectedDocForQuote.type)}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Nossa equipe jurídica irá analisar o documento e retornar com um orçamento e prazo para a tradução juramentada.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCloseQuoteModal()}
+                    disabled={isRequestingQuote}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleRequestTranslation}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    disabled={isRequestingQuote}
+                  >
+                    {isRequestingQuote ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Confirmar Solicitação
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="p-8 text-center">
+                <div className="mb-4 flex justify-center">
+                  <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                    <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Solicitação Enviada!
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Seu pedido de orçamento foi registrado com sucesso. Nossa equipe entrará em contato em breve.
+                </p>
+                <Button
+                  onClick={handleCloseQuoteModal}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Entendido
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Modal de Exibição do Orçamento para o Cliente */}
+      {showClientQuoteModal && selectedDocForClientQuote && (
+        <ClientOrcamentoModal
+          documentoId={selectedDocForClientQuote.id}
+          documentoNome={selectedDocForClientQuote.fileName || getDocumentName(selectedDocForClientQuote.type)}
+          isOpen={showClientQuoteModal}
+          onClose={() => {
+            setShowClientQuoteModal(false)
+            setSelectedDocForClientQuote(null)
+          }}
+          onPaymentSuccess={() => {
+            if (onRefresh) onRefresh()
+            else window.location.reload()
+          }}
+        />
       )}
     </>
   )

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from './ui/button'
 import { ScrollArea } from '../../shared/components/ui/scroll-area'
 import { Document, RequiredDocument } from '../types'
-import { FileText, Upload, CheckCircle, AlertCircle, Trash2, Loader2, Filter, XCircle, Check } from 'lucide-react'
+import { FileText, Upload, CheckCircle, AlertCircle, Trash2, Loader2, Filter, XCircle, Check, Clock } from 'lucide-react'
 import { Badge } from './ui/badge'
 import { formatDate } from '../lib/utils'
 import { Label } from '../../juridico/components/ui/label'
@@ -11,6 +11,7 @@ import { Textarea } from '../../juridico/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../juridico/components/ui/select'
 import { DialogFooter } from './ui/dialog'
 import { compressFile } from '../../../utils/compressFile'
+import { clienteService } from '../services/clienteService'
 
 interface FamilyMemberModalProps {
     isOpen: boolean
@@ -21,6 +22,7 @@ interface FamilyMemberModalProps {
     onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
     onDelete: (documentId: string) => void
     onUpdateStatus?: (documentId: string, status: string, reason?: string) => Promise<void>
+    onRefresh?: () => void
 }
 
 const statusConfig: Record<string, { label: string, color: string, bg: string, badge: any }> = {
@@ -43,7 +45,8 @@ export function FamilyMemberModal({
     requiredDocuments,
     onUpload,
     onDelete,
-    onUpdateStatus
+    onUpdateStatus,
+    onRefresh
 }: FamilyMemberModalProps) {
     const [uploadingType, setUploadingType] = useState<string | null>(null)
     const [optimisticDocs, setOptimisticDocs] = useState<Record<string, Document>>({})
@@ -56,6 +59,12 @@ export function FamilyMemberModal({
     const [rejectionReason, setRejectionReason] = useState<string>('')
     const [customReason, setCustomReason] = useState<string>('')
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+    
+    // Translation Quote State
+    const [selectedDocForQuote, setSelectedDocForQuote] = useState<Document | null>(null)
+    const [isRequestingQuote, setIsRequestingQuote] = useState(false)
+    const [showQuoteModal, setShowQuoteModal] = useState(false)
+    const [requestedSuccessfully, setRequestedSuccessfully] = useState(false)
 
     const PREDEFINED_REASONS = [
         { value: 'ilegivel', label: 'Documento Ilegível' },
@@ -231,6 +240,19 @@ export function FamilyMemberModal({
 
         return true
     })
+
+    const handleCloseQuoteModal = () => {
+        if (requestedSuccessfully) {
+            if (onRefresh) {
+                onRefresh()
+            } else {
+                window.location.reload()
+            }
+        }
+        setShowQuoteModal(false)
+        setSelectedDocForQuote(null)
+        setRequestedSuccessfully(false)
+    }
 
     return (
         <>
@@ -518,6 +540,28 @@ export function FamilyMemberModal({
                                                                             <span className="text-[9px] text-gray-400">Apostilado & Traduzido</span>
                                                                         </div>
                                                                     )}
+                                                                    
+                                                                    {uploadedDoc?.status !== 'waiting_translation_quote' && !uploadedDoc?.isTranslated && (
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            className="h-7 text-[10px] border-purple-200 hover:bg-purple-50 text-purple-700 mt-1"
+                                                                            onClick={() => {
+                                                                                setSelectedDocForQuote(uploadedDoc);
+                                                                                setShowQuoteModal(true);
+                                                                            }}
+                                                                            disabled={isRequestingQuote}
+                                                                        >
+                                                                            Solicitar Tradução
+                                                                        </Button>
+                                                                    )}
+
+                                                                    {uploadedDoc?.status === 'waiting_translation_quote' && (
+                                                                        <div className="flex items-center gap-1 text-purple-600 text-[10px] font-medium px-2 py-1 bg-purple-50 rounded-full mt-1">
+                                                                            <Clock className="h-3 w-3" />
+                                                                            <span>Orçamento Solicitado</span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             )}
 
@@ -617,6 +661,89 @@ export function FamilyMemberModal({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal de Confirmação de Orçamento */}
+            {showQuoteModal && selectedDocForQuote && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center">
+                    <div 
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => !isRequestingQuote && handleCloseQuoteModal()}
+                    />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        {!requestedSuccessfully ? (
+                            <>
+                                <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        Confirmar Solicitação
+                                    </h3>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Tradução Juramentada para:
+                                    </p>
+                                    <div className="mt-2 text-purple-600 font-medium text-sm bg-purple-50 dark:bg-purple-900/20 px-3 py-2 rounded-lg border border-purple-100 dark:border-purple-800 flex items-center gap-2">
+                                        <FileText className="h-4 w-4" />
+                                        {selectedDocForQuote.fileName || selectedDocForQuote.name}
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleCloseQuoteModal()}
+                                        disabled={isRequestingQuote}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                                        disabled={isRequestingQuote}
+                                        onClick={async () => {
+                                            try {
+                                                setIsRequestingQuote(true)
+                                                await clienteService.updateDocumentoStatus(selectedDocForQuote.id, 'WAITING_TRANSLATION_QUOTE')
+                                                setRequestedSuccessfully(true)
+                                            } catch (error: any) {
+                                                alert(error.message || 'Erro ao solicitar tradução')
+                                            } finally {
+                                                setIsRequestingQuote(false)
+                                            }
+                                        }}
+                                    >
+                                        {isRequestingQuote ? (
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        ) : (
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                        )}
+                                        Confirmar
+                                    </Button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="p-8 text-center">
+                                <div className="mb-4 flex justify-center">
+                                    <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                                        <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                    Solicitação Enviada!
+                                </h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                                    Seu pedido de orçamento foi registrado.
+                                </p>
+                                <Button
+                                    onClick={handleCloseQuoteModal}
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    Ok, entendi
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </>
     )
 }
+

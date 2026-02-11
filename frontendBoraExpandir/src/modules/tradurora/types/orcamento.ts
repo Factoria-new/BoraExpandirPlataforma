@@ -4,6 +4,8 @@ export interface OrcamentoItem {
   clienteNome: string
   clienteEmail: string
   clienteTelefone: string
+  storagePath: string
+  publicUrl?: string
   parIdiomas: {
     origem: string
     destino: string
@@ -17,10 +19,12 @@ export interface OrcamentoItem {
   prazoEntrega?: string
   created_at: string
   updated_at: string
+  documentoId: string
 }
 
 export interface OrcamentoFormData {
   valorOrcamento: number
   prazoEntrega: string
   observacoes?: string
+  documentoId: string
 }

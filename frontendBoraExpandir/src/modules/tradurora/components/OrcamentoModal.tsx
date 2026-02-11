@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { X, FileText, Calendar, DollarSign, Send, Info } from 'lucide-react'
 import type { OrcamentoItem, OrcamentoFormData } from '../types/orcamento'
 import { Badge } from '../../../components/ui/Badge'
@@ -48,11 +48,22 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
     valorOrcamento: 0,
     prazoEntrega: getDataPrazoPadrao(5), // Prazo padrão: 5 dias à frente (yyyy-mm-dd)
     observacoes: '',
+    documentoId: orcamento?.documentoId || '',
   })
   
   // Estado para exibição da data no formato brasileiro
   const [prazoDisplay, setPrazoDisplay] = useState(() => formatarDataBR(getDataPrazoPadrao(5)))
   const [submitting, setSubmitting] = useState(false)
+
+  // Atualiza o documentoId no form quando mudar o orçamento selecionado
+  useEffect(() => {
+    if (orcamento) {
+      setFormData(prev => ({
+        ...prev,
+        documentoId: orcamento.documentoId
+      }))
+    }
+  }, [orcamento])
 
   // Calcula valor com markup da plataforma
   const valorComMarkup = useMemo(() => {
@@ -84,6 +95,7 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.valorOrcamento || !formData.prazoEntrega) return
+    
     
     setSubmitting(true)
     try {
@@ -126,9 +138,21 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
 
           {/* Dados do Documento */}
           <div className="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-lg space-y-3">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <p className="font-semibold text-gray-900 dark:text-white">{orcamento.documentoNome}</p>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <p className="font-semibold text-gray-900 dark:text-white">{orcamento.documentoNome}</p>
+              </div>
+              {orcamento.publicUrl && (
+                <a
+                  href={orcamento.publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-semibold rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  Download
+                </a>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>

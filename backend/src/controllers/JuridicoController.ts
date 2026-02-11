@@ -273,7 +273,7 @@ class JuridicoController {
     // =============================================
 
     // Mocked funcionario juridico ID (will be replaced by auth middleware later)
-    private MOCKED_FUNCIONARIO_JURIDICO_ID = '41f21e5c-dd93-4592-9470-e043badc3a18'
+    private MOCKED_FUNCIONARIO_JURIDICO_ID = 'befc50e4-3191-449e-9691-83d4e55dceb2'
 
     // POST /juridico/formularios - Upload document from juridico to client
     async uploadFormularioJuridico(req: any, res: any) {
@@ -462,6 +462,101 @@ class JuridicoController {
             console.error('Erro ao atualizar status do formulário cliente:', error)
             return res.status(500).json({
                 message: 'Erro ao atualizar status do formulário',
+                error: error.message
+            })
+        }
+    }
+
+    // =============================================
+    // GESTÃO DE NOTAS DO JURÍDICO
+    // =============================================
+
+    // POST /juridico/notas - Criar nota
+    async createNote(req: any, res: any) {
+        try {
+            const { clienteId, processoId, etapa, texto } = req.body
+            
+            // TODO: Pegar do middleware de auth
+            const autorId = req.body.autorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+
+            console.log('========== JURIDICO CREATE NOTE DEBUG ==========')
+            console.log('clienteId:', clienteId)
+            console.log('processoId:', processoId)
+            console.log('etapa:', etapa)
+            console.log('autorId:', autorId)
+            console.log('texto:', texto ? (texto.substring(0, 20) + '...') : 'undefined')
+            console.log('================================================')
+
+            if (!clienteId || !texto) {
+                console.warn('[JuridicoController] clienteId ou texto faltando')
+                return res.status(400).json({ message: 'clienteId e texto são obrigatórios' })
+            }
+
+            const nota = await JuridicoRepository.createNote({
+                clienteId,
+                processoId,
+                etapa,
+                autorId,
+                texto
+            })
+
+            console.log('[JuridicoController] Nota criada com sucesso no DB')
+
+            return res.status(201).json({
+                message: 'Nota jurídica criada com sucesso',
+                data: nota
+            })
+        } catch (error: any) {
+            console.error('[JuridicoController] Erro fatal ao criar nota jurídica:', error)
+            return res.status(500).json({
+                message: 'Erro ao criar nota jurídica',
+                error: error.message
+            })
+        }
+    }
+
+    // GET /juridico/notas/:clienteId - Buscar notas de um cliente
+    async getNotes(req: any, res: any) {
+        try {
+            const { clienteId } = req.params
+
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            }
+
+            const notas = await JuridicoRepository.getNotesByClienteId(clienteId)
+
+            return res.status(200).json({
+                message: 'Notas jurídicas recuperadas com sucesso',
+                data: notas
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar notas jurídicas:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar notas jurídicas',
+                error: error.message
+            })
+        }
+    }
+
+    // DELETE /juridico/notas/:noteId - Deletar nota
+    async deleteNote(req: any, res: any) {
+        try {
+            const { noteId } = req.params
+
+            if (!noteId) {
+                return res.status(400).json({ message: 'noteId é obrigatório' })
+            }
+
+            await JuridicoRepository.deleteNote(noteId)
+
+            return res.status(200).json({
+                message: 'Nota jurídica deletada com sucesso'
+            })
+        } catch (error: any) {
+            console.error('Erro ao deletar nota jurídica:', error)
+            return res.status(500).json({
+                message: 'Erro ao deletar nota jurídica',
                 error: error.message
             })
         }
