@@ -214,8 +214,25 @@ class ComercialController {
                         console.log('Agendamento criado com sucesso via Webhook Stripe')
                     } catch (error: any) {
                         console.error('Erro ao criar agendamento via Webhook Stripe:', error)
-                        // Retornamos 500 para o Stripe tentar novamente se for um erro temporário
                         return res.status(500).json({ message: 'Erro ao processar agendamento' })
+                    }
+                } else if (metadata && metadata.tipo === 'orcamento') {
+                    try {
+                        const documentoIds = metadata.documentoIds?.split(',') || []
+                        console.log('Pagamento Stripe confirmado para orçamentos:', documentoIds)
+                        
+                        const TraducoesRepository = (await import('../repositories/TraducoesRepository')).default
+                        
+                        for (const docId of documentoIds) {
+                            const orcamento = await TraducoesRepository.getOrcamentoByDocumento(docId)
+                            if (orcamento) {
+                                await TraducoesRepository.aprovarOrcamento(orcamento.id, docId)
+                            }
+                        }
+                        console.log('Orçamentos aprovados com sucesso via Webhook Stripe')
+                    } catch (error: any) {
+                        console.error('Erro ao aprovar orçamentos via Webhook Stripe:', error)
+                        return res.status(500).json({ message: 'Erro ao processar aprovação de orçamentos' })
                     }
                 }
                 break

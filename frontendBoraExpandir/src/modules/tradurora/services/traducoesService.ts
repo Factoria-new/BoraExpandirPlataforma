@@ -59,6 +59,34 @@ class TraducoesService {
     }
   }
 
+  async createCheckoutSession(dados: {
+    documentoIds: string[]
+    email: string
+    successUrl?: string
+    cancelUrl?: string
+    manualPrice?: number
+  }) {
+    try {
+      const response = await fetch(`${API_URL}/traducoes/checkout/stripe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dados)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao criar sessão de pagamento')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('TraducoesService.createCheckoutSession error:', error)
+      throw error
+    }
+  }
+
   async aprovarOrcamento(orcamentoId: string, documentoId: string) {
     try {
       const response = await fetch(`${API_URL}/traducoes/orcamentos/${orcamentoId}/aprovar`, {
@@ -77,6 +105,32 @@ class TraducoesService {
       return await response.json()
     } catch (error) {
       console.error('TraducoesService.aprovarOrcamento error:', error)
+      throw error
+    }
+  }
+
+  async aprovarOrcamentoAdm(orcamentoId: string, dados: { 
+    documentoId: string, 
+    porcentagemMarkup: number, 
+    valorFinal: number 
+  }) {
+    try {
+      const response = await fetch(`${API_URL}/traducoes/orcamentos/${orcamentoId}/aprovar-adm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dados)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao aprovar orçamento (ADM)')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('TraducoesService.aprovarOrcamentoAdm error:', error)
       throw error
     }
   }

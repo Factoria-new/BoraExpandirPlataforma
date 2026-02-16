@@ -80,6 +80,48 @@ class StripeService {
     }
 
     /**
+     * Cria uma sessão de checkout genérica para múltiplos itens
+     */
+    async createGenericCheckoutSession(params: {
+        items: Array<{ name: string; amount: number; quantity: number }>
+        email: string
+        metadata: Record<string, string>
+        successUrl: string
+        cancelUrl: string
+        currency?: string
+    }): Promise<{ checkoutUrl: string; sessionId: string }> {
+        const { items, email, metadata, successUrl, cancelUrl, currency = 'brl' } = params
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            customer_email: email,
+            line_items: items.map(item => ({
+                price_data: {
+                    currency: currency.toLowerCase(),
+                    product_data: {
+                        name: item.name,
+                    },
+                    unit_amount: item.amount,
+                },
+                quantity: item.quantity,
+            })),
+            metadata,
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+        })
+
+        if (!session.url) {
+            throw new Error('Não foi possível criar a sessão de checkout')
+        }
+
+        return {
+            checkoutUrl: session.url,
+            sessionId: session.id
+        }
+    }
+
+    /**
      * Recupera os detalhes de uma sessão de checkout
      */
     async getSession(sessionId: string): Promise<Stripe.Checkout.Session> {

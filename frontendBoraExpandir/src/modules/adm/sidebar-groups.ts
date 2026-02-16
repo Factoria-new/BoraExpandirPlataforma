@@ -15,9 +15,9 @@ export const admSidebarGroups: SidebarGroup[] = [
   {
     label: "Financeiro",
     items: [
+      { label: "Gestão de Preços", to: "/adm/financeiro/precos", icon: HandCoins },
       { label: "Visão Geral", to: "/adm/financeiro/visao-geral", icon: PieChart },
       { label: "Contas a Receber", to: "/adm/financeiro/contas-receber", icon: Wallet },
-      { label: "Comissões", to: "/adm/financeiro/comissoes", icon: HandCoins },
       { label: "Pagamentos", to: "/adm/financeiro/pagamentos", icon: CreditCard },
       { label: "Relatórios", to: "/adm/financeiro/relatorios", icon: BarChart },
     ],

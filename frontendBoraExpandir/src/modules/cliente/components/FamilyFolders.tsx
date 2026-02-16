@@ -7,6 +7,7 @@ import { ClipboardList, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
 interface FamilyMember {
     id: string
     name: string
+    email?: string
     type: string
     isTitular?: boolean
     clienteId?: string
@@ -167,7 +168,7 @@ export function FamilyFolders({
                 </div>
             </div>
 
-            <div className="space-y-4">
+             <div className="space-y-4 pb-20">
                 {members.map((member) => (
                     <FamilyFolderCard
                         key={member.id}
@@ -182,6 +183,9 @@ export function FamilyFolders({
                         onDelete={onDelete}
                     />
                 ))}
+                
+                {/* Spacer to ensure the last expanded card is fully scrollable */}
+                <div className="h-40" aria-hidden="true" />
             </div>
 
 

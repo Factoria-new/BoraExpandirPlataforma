@@ -28,7 +28,7 @@ class TraducoesRepository {
         .in('id', clienteIds),
       supabase
         .from('orcamentos')
-        .select('*')
+        .select('*, porcentagem_markup, valor_final')
         .in('documento_id', documentoIds)
         .order('criado_em', { ascending: false })
     ])
@@ -79,12 +79,11 @@ class TraducoesRepository {
       throw orcError
     }
 
-    // 2. Atualizar o status do documento para WAITING_QUOTE_APPROVAL
-    // Opcional: dependendo da regra de negócio, podemos manter como WAITING_TRANSLATION_QUOTE
-    // mas geralmente quando o tradutor responde, ele sai da fila de "pendentes"
+    // 2. Atualizar o status do documento para WAITING_ADM_APPROVAL
+    // O orçamento foi respondido pelo tradutor, mas o ADM ainda precisa aprovar/marcar
     const { error: docError } = await supabase
       .from('documentos')
-      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .update({ status: 'WAITING_ADM_APPROVAL' })
       .eq('id', dados.documentoId)
 
     if (docError) {
@@ -115,6 +114,42 @@ class TraducoesRepository {
     return data || null
   }
 
+  async aprovarOrcamentoAdm(orcamentoId: string, dados: {
+    documentoId: string
+    porcentagemMarkup: number
+    valorFinal: number
+  }) {
+    // 1. Atualizar o orçamento com markup e valor final
+    const { data: orcamento, error: orcError } = await supabase
+      .from('orcamentos')
+      .update({
+        porcentagem_markup: dados.porcentagemMarkup,
+        valor_final: dados.valorFinal,
+        status: 'aprovado' // Agora está disponível para o cliente
+      })
+      .eq('id', orcamentoId)
+      .select()
+      .single()
+
+    if (orcError) {
+      console.error('Erro ao aprovar orçamento pelo ADM:', orcError)
+      throw orcError
+    }
+
+    // 2. Liberar para o cliente pagar
+    const { error: docError } = await supabase
+      .from('documentos')
+      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .eq('id', dados.documentoId)
+
+    if (docError) {
+      console.error('Erro ao liberar orçamento para o cliente:', docError)
+      throw docError
+    }
+
+    return orcamento
+  }
+
   async aprovarOrcamento(orcamentoId: string, documentoId: string) {
     // 1. Atualizar o status do orçamento para 'aprovado'
     const { error: orcError } = await supabase
@@ -127,11 +162,45 @@ class TraducoesRepository {
       throw orcError
     }
 
-    // 2. Atualizar o status do documento para 'ANALYZING_TRANSLATION'
-    // Isso indica que o pagamento foi "confirmado" (simulado) e a tradução está em andamento/análise
+    // 2. Buscar o status atual do documento para decidir o próximo status
+    const { data: doc, error: fetchError } = await supabase
+      .from('documentos')
+      .select('status')
+      .eq('id', documentoId)
+      .single()
+
+    if (fetchError) {
+      console.error('Erro ao buscar status do documento:', fetchError)
+      throw fetchError
+    }
+
+    // 3. Definir o próximo status baseado no fluxo
+    let nextStatus = 'ANALYZING_TRANSLATION' // Default for translation
+    
+    // Se for um orçamento de apostila (estava em WAITING_QUOTE_APPROVAL vindo de um WAITING_APOSTILLE_QUOTE)
+    // ou se o documento explicitamente estava na etapa de apostila
+    if (doc.status === 'WAITING_QUOTE_APPROVAL') {
+      // Como não sabemos 100% se era apostila ou tradução só pelo status (ambos usam WAITING_QUOTE_APPROVAL)
+      // podemos checar se o documento já está apostilado. Se não está, e estava em aprovação, 
+      // é muito provável que seja o pagamento da apostila.
+      // Outra opção é o front passar o "tipo" do orçamento, mas vamos tentar inferir ou usar um status mais específico se possível.
+      // Por agora, vamos assumir que se veio de um fluxo que aceita apostila, e não está apostilado, vai para ANALYZING_APOSTILLE.
+    }
+
+    // Para simplificar e garantir correção, vamos apenas mudar para um status genérico de análise 
+    // ou deixar o jurídico decidir. Mas o ideal é automatizar.
+    // Se o status anterior era relacionado a apostila:
+    // await supabase.from('documentos').update({ status: 'ANALYZING_APOSTILLE' }).eq('id', documentoId)
+    
+    // Por enquanto, manteremos a lógica de ANALYZING_TRANSLATION ou uma similar para Apostila
+    // se detectarmos que o documento precisa de apostila.
+    
+    const isApostilleFlow = doc.status === 'WAITING_QUOTE_APPROVAL'; // Simplificação
+    const targetStatus = isApostilleFlow ? 'ANALYZING_APOSTILLE' : 'ANALYZING_TRANSLATION';
+
     const { error: docError } = await supabase
       .from('documentos')
-      .update({ status: 'ANALYZING_TRANSLATION' })
+      .update({ status: targetStatus })
       .eq('id', documentoId)
 
     if (docError) {

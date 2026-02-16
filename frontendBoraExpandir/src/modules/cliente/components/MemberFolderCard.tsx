@@ -9,12 +9,14 @@ import { FormsDeclarationsCard } from './FormsDeclarationsCard'
 import { compressFile } from '../../../utils/compressFile'
 import { clienteService } from '../services/clienteService'
 import { UploadConfirmModal } from './UploadConfirmModal'
-import { ClientOrcamentoModal } from './ClientOrcamentoModal'
+import { ApostilleQuoteModal } from './ApostilleQuoteModal'
+import { TranslationQuoteModal } from './TranslationPaymentModal'
 import { DollarSign } from 'lucide-react'
 
 interface FamilyMember {
   id: string
   name: string
+  email?: string
   type: string
   isTitular?: boolean
   clienteId?: string
@@ -168,16 +170,19 @@ export function FamilyFolderCard({
 
     if (status === 'rejected') return 'rejected';
 
-    // Se está em qualquer sub-etapa de apostilamento ou aprovado sem apostila
-    if (status?.includes('apostille') || (status === 'approved' && !doc.isApostilled)) {
+    // If it's waiting for quote approval, check if it's for apostille or translation
+    const isWaitingQuote = status === 'waiting_quote_approval';
+
+    // Stage Apostille: documents ready for or in apostille process
+    if (status?.includes('apostille') || (status === 'approved' && !doc.isApostilled) || (isWaitingQuote && !doc.isApostilled)) {
       return 'apostille';
     }
-
-    // Se está em qualquer sub-etapa de tradução ou aprovado com apostila mas sem tradução
-    if (status?.includes('translation') || status === 'waiting_quote_approval' || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
+    
+    // Stage Translation: documents ready for or in translation process
+    if (status?.includes('translation') || (isWaitingQuote && doc.isApostilled) || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
       return 'translation';
     }
-
+    
     if (status === 'approved' && doc.isApostilled && doc.isTranslated) {
       return 'completed';
     }
@@ -185,6 +190,10 @@ export function FamilyFolderCard({
     if (status === 'pending') return 'requested_pending';
 
     return 'analyzing';
+  }
+
+  const docIsWaitingApostille = (doc: ClientDocument) => {
+    return getDocStage(doc) === 'apostille';
   }
 
   const getDocumentsForStage = (stageId: string) => {
@@ -447,6 +456,23 @@ export function FamilyFolderCard({
     }
   }
 
+  const handleRequestApostille = async () => {
+    if (!selectedDocForQuote) return
+
+    try {
+      setIsRequestingQuote(true)
+      await clienteService.updateDocumentoStatus(selectedDocForQuote.id, 'WAITING_APOSTILLE_QUOTE')
+      
+      setRequestedSuccessfully(true)
+
+    } catch (error: any) {
+      console.error('Erro ao solicitar apostila:', error)
+      alert(error.message || 'Erro ao solicitar apostila')
+    } finally {
+      setIsRequestingQuote(false)
+    }
+  }
+
   const handleCloseQuoteModal = () => {
     if (requestedSuccessfully) {
       if (onRefresh) {
@@ -595,7 +621,7 @@ export function FamilyFolderCard({
         {/* Expanded Content - Timeline - Only if has documents */}
         <div className={cn(
           "overflow-hidden transition-all duration-300",
-          isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+          isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'
         )}>
           <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50/50 dark:bg-gray-900/20 space-y-8">
             {/* Rejected Documents Header - Outside Timeline */}
@@ -974,19 +1000,64 @@ export function FamilyFolderCard({
                                         </Button>
                                       )}
 
-                                      {/* Apostille stage action */}
+                                       {/* Apostille stage action */}
                                       {stage.id === 'apostille' && (
                                         <div className="flex gap-2">
                                           {(doc?.status === 'waiting_apostille' || doc?.status === 'approved') ? (
-                                            <Button
-                                              size="sm"
-                                              className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
-                                              onClick={() => handleUploadClick(inputId)}
-                                              disabled={isUploading}
-                                            >
-                                              <Upload className="h-3 w-3" />
-                                              Upload Apostila
-                                            </Button>
+                                            <>
+                                              <Button
+                                                size="sm"
+                                                className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                                                onClick={() => handleUploadClick(inputId)}
+                                                disabled={isUploading}
+                                              >
+                                                <Upload className="h-3 w-3" />
+                                                Upload Apostila
+                                              </Button>
+
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 text-xs border-amber-200 hover:bg-amber-50 text-amber-700 gap-1.5"
+                                                onClick={() => {
+                                                  setSelectedDocForClientQuote(doc)
+                                                  setShowClientQuoteModal(true)
+                                                }}
+                                                disabled={isUploading || isRequestingQuote}
+                                              >
+                                                <FileText className="h-3 w-3" />
+                                                Solicitar Apostila
+                                              </Button>
+                                            </>
+                                          ) : doc?.status?.toLowerCase() === 'waiting_quote_approval' ? (
+                                            <div className="flex gap-2">
+                                              <Button
+                                                size="sm"
+                                                className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                                                onClick={() => {
+                                                  setSelectedDocForClientQuote(doc)
+                                                  setShowClientQuoteModal(true)
+                                                }}
+                                              >
+                                                <DollarSign className="h-3 w-3" />
+                                                Ver Orçamento
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 text-xs border-gray-300 gap-1.5 hover:bg-gray-50 bg-white"
+                                                onClick={() => handleUploadClick(inputId)}
+                                                disabled={isUploading}
+                                              >
+                                                <Upload className="h-3 w-3" />
+                                                Substituir
+                                              </Button>
+                                            </div>
+                                          ) : doc?.status?.toLowerCase() === 'waiting_apostille_quote' ? (
+                                            <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
+                                              <Clock className="h-4 w-4" />
+                                              <span>Orçamento Solicitado</span>
+                                            </div>
                                           ) : (
                                             <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
                                               <Clock className="h-4 w-4" />
@@ -1022,10 +1093,10 @@ export function FamilyFolderCard({
                                               size="sm"
                                               variant="outline"
                                               className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700 gap-1.5"
-                                              onClick={() => {
-                                                setSelectedDocForQuote(doc)
-                                                setShowQuoteModal(true)
-                                              }}
+                                                onClick={() => {
+                                                  setSelectedDocForQuote(doc)
+                                                  setShowQuoteModal(true)
+                                                }}
                                               disabled={isUploading || isRequestingQuote}
                                             >
                                               <FileText className="h-3 w-3" />
@@ -1220,7 +1291,7 @@ export function FamilyFolderCard({
         </div>
       )}
 
-      {/* Modal de Solicitação de Orçamento de Tradução */}
+      {/* Modal de Solicitação de Orçamento */}
       {showQuoteModal && selectedDocForQuote && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div
@@ -1230,59 +1301,72 @@ export function FamilyFolderCard({
           <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {!requestedSuccessfully ? (
               <>
-                <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center">
-                      <FileText className="h-7 w-7 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">
-                        Solicitar Tradução
-                      </h3>
-                      <p className="text-purple-100 text-sm mt-1">
-                        Orçamento de tradução juramentada
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                {/* Header dinâmico baseado no status do documento */}
+                {(() => {
+                  const isApostille = docIsWaitingApostille(selectedDocForQuote);
+                  const colorClass = isApostille ? "from-amber-600 to-amber-700" : "from-purple-600 to-purple-700";
+                  const bgColorClass = isApostille ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800" : "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800";
+                  const textColorClass = isApostille ? "text-amber-900 dark:text-amber-100" : "text-purple-900 dark:text-purple-100";
+                  const fileIconColorClass = isApostille ? "text-amber-700 dark:text-amber-300" : "text-purple-700 dark:text-purple-300";
 
-                <div className="p-6 space-y-4">
-                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
-                    <p className="text-sm text-purple-900 dark:text-purple-100 font-medium">
-                      Você está solicitando um orçamento de tradução para o documento:
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 text-purple-700 dark:text-purple-300">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="font-bold">{selectedDocForQuote.fileName || getDocumentName(selectedDocForQuote.type)}</span>
-                    </div>
-                  </div>
+                  return (
+                    <>
+                      <div className={cn("p-6 bg-gradient-to-r", colorClass)}>
+                        <div className="flex items-center gap-4">
+                          <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center">
+                            <FileText className="h-7 w-7 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-white">
+                              {isApostille ? "Solicitar Apostila" : "Solicitar Tradução"}
+                            </h3>
+                            <p className="text-white/80 text-sm mt-1">
+                              {isApostille ? "Orçamento para apostilamento" : "Orçamento de tradução juramentada"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
 
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Nossa equipe jurídica irá analisar o documento e retornar com um orçamento e prazo para a tradução juramentada.
-                  </p>
-                </div>
+                      <div className="p-6 space-y-4">
+                        <div className={cn("border rounded-xl p-4", bgColorClass)}>
+                          <p className={cn("text-sm font-medium", textColorClass)}>
+                            Você está solicitando um orçamento de {isApostille ? "apostila" : "tradução"} para o documento:
+                          </p>
+                          <div className={cn("mt-2 flex items-center gap-2", fileIconColorClass)}>
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="font-bold">{selectedDocForQuote.fileName || getDocumentName(selectedDocForQuote.type)}</span>
+                          </div>
+                        </div>
 
-                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleCloseQuoteModal()}
-                    disabled={isRequestingQuote}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleRequestTranslation}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                    disabled={isRequestingQuote}
-                  >
-                    {isRequestingQuote ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                    )}
-                    Confirmar Solicitação
-                  </Button>
-                </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Nossa equipe jurídica irá analisar o documento e retornar com um orçamento e prazo.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleCloseQuoteModal()}
+                          disabled={isRequestingQuote}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={isApostille ? handleRequestApostille : handleRequestTranslation}
+                          className={cn("text-white", isApostille ? "bg-amber-600 hover:bg-amber-700" : "bg-purple-600 hover:bg-purple-700")}
+                          disabled={isRequestingQuote}
+                        >
+                          {isRequestingQuote ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                          )}
+                          Confirmar Solicitação
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             ) : (
               <div className="p-8 text-center">
@@ -1308,12 +1392,33 @@ export function FamilyFolderCard({
           </div>
         </div>
       )}
-      {/* Modal de Exibição do Orçamento para o Cliente */}
-      {showClientQuoteModal && selectedDocForClientQuote && (
-        <ClientOrcamentoModal
+      {/* Modal de Apostila */}
+      {showClientQuoteModal && selectedDocForClientQuote && docIsWaitingApostille(selectedDocForClientQuote) && (
+        <ApostilleQuoteModal
           documentoId={selectedDocForClientQuote.id}
           documentoNome={selectedDocForClientQuote.fileName || getDocumentName(selectedDocForClientQuote.type)}
+          clienteEmail={member.email || ''}
           isOpen={showClientQuoteModal}
+          allDocuments={memberDocs}
+          onClose={() => {
+            setShowClientQuoteModal(false)
+            setSelectedDocForClientQuote(null)
+          }}
+          onPaymentSuccess={() => {
+            if (onRefresh) onRefresh()
+            else window.location.reload()
+          }}
+        />
+      )}
+
+      {/* Modal de Tradução */}
+      {showClientQuoteModal && selectedDocForClientQuote && !docIsWaitingApostille(selectedDocForClientQuote) && (
+        <TranslationQuoteModal
+          documentoId={selectedDocForClientQuote.id}
+          documentoNome={selectedDocForClientQuote.fileName || getDocumentName(selectedDocForClientQuote.type)}
+          clienteEmail={member.email || ''}
+          isOpen={showClientQuoteModal}
+          allDocuments={memberDocs}
           onClose={() => {
             setShowClientQuoteModal(false)
             setSelectedDocForClientQuote(null)

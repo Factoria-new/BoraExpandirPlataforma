@@ -198,7 +198,7 @@ export function FormsDeclarationsCard({
     }
 
     return (
-        <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 pb-6">
             {/* Header */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}

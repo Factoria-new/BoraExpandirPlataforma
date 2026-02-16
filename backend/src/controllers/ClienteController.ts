@@ -382,7 +382,7 @@ class ClienteController {
       const validStatuses = [
         'PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE',
         'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'WAITING_TRANSLATION_QUOTE', 
-        'WAITING_QUOTE_APPROVAL', 'APPROVED', 'REJECTED'
+        'WAITING_ADM_APPROVAL', 'WAITING_QUOTE_APPROVAL', 'APPROVED', 'REJECTED'
       ];
 
       if (!status || !validStatuses.includes(status)) {
@@ -421,8 +421,10 @@ class ClienteController {
     } catch (error: any) {
       console.error('Erro ao atualizar status do documento:', error)
       return res.status(500).json({
-        message: 'Erro ao atualizar status do documento',
-        error: error.message
+        message: `Erro ao atualizar status do documento: ${error.message} (ID: ${req.params.documentoId}, Status: ${req.body.status})`,
+        error: error.message,
+        documentoId: req.params.documentoId,
+        status: req.body.status
       })
     }
   }

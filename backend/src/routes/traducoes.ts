@@ -15,4 +15,10 @@ router.get('/orcamentos/documento/:documentoId', TraducoesController.getOrcament
 // POST /api/traducoes/orcamentos/:id/aprovar
 router.post('/orcamentos/:id/aprovar', TraducoesController.aprovarOrcamento)
 
+// POST /api/traducoes/orcamentos/:id/aprovar-adm
+router.post('/orcamentos/:id/aprovar-adm', TraducoesController.aprovarOrcamentoAdm)
+
+// POST /api/traducoes/checkout/stripe
+router.post('/checkout/stripe', TraducoesController.createCheckoutSession)
+
 export default router

@@ -8,6 +8,7 @@ import CockpitDoDoNo from "./pages/admin/CockpitDoDoNo";
 import AuditoriaAprovacoes from "./pages/admin/AuditoriaAprovacoes";
 import GestaoTradutores from "./pages/admin/GestaoTradutores";
 import PagamentosAdmin from "./pages/admin/PagamentosAdmin";
+import FinanceiroPrecos from "./pages/admin/FinanceiroPrecos";
 import { Config } from "../../components/ui/Config";
 import { ClientDNAPage } from "../../components/ui/ClientDNA";
 
@@ -91,6 +92,7 @@ const App = () => (
 
       {/* Rotas Financeiras */}
       <Route path="financeiro/visao-geral" element={<FinancialDashboard />} />
+      <Route path="financeiro/precos" element={<FinanceiroPrecos />} />
       <Route path="financeiro/contas-receber" element={<FinancialProcessList />} />
       <Route path="financeiro/comissoes" element={<Comissoes />} />
       <Route path="financeiro/pagamentos" element={<PagamentosAdmin />} />

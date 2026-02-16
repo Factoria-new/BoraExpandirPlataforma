@@ -29,7 +29,7 @@ export function ClienteApp() {
   const location = useLocation()
   const navigate = useNavigate()
   const [documents, setDocuments] = useState<Document[]>([])
-  const [familyMembers, setFamilyMembers] = useState<{id: string, name: string, type: string}[]>([])
+  const [familyMembers, setFamilyMembers] = useState<{id: string, name: string, email?: string, type: string}[]>([])
   const [processo, setProcesso] = useState<Process | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   
@@ -133,13 +133,14 @@ export function ClienteApp() {
           const members = (dependentesData.data || []).map((dep: any) => ({
             id: dep.id,
             name: dep.nome_completo,
+            email: dep.email,
             type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente'
           }))
           // Add the main client as titular
-          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }, ...members])
+          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, email: mockClient.email, type: 'Titular' }, ...members])
         } else {
           // Fallback: just the main client
-          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }])
+          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, email: mockClient.email, type: 'Titular' }])
         }
 
         // Fetch documents
