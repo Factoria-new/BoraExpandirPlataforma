@@ -18,7 +18,7 @@ import {
   mockTranslatedDocuments,
   mockPendingActions,
 } from './lib/mock-data'
-import { Client, Document, Notification, ApprovedDocument, TranslatedDocument, Process } from './types'
+import { Client, Document, Notification, ApprovedDocument, TranslatedDocument, Process, ProcessStep } from './types'
 import { Apostilamento } from './components/Apostilamento'
 import { DocumentUploadFlow } from './components/DocumentUploadFlow'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
@@ -31,11 +31,11 @@ export function ClienteApp() {
   const navigate = useNavigate()
   const [client, setClient] = useState<Client>(mockClient)
   const [documents, setDocuments] = useState<Document[]>([])
-  const [familyMembers, setFamilyMembers] = useState<{id: string, name: string, email?: string, type: string}[]>([])
+  const [familyMembers, setFamilyMembers] = useState<{ id: string, name: string, email?: string, type: string }[]>([])
   const [processo, setProcesso] = useState<Process | null>(null)
   const [requerimentos, setRequerimentos] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  
+
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
   // Helper to sanitize name (same as backend)
@@ -52,7 +52,7 @@ export function ClienteApp() {
     try {
       const response = await fetch(`${API_BASE_URL}/cliente/${client.id}/documentos`)
       if (!response.ok) throw new Error('Falha ao buscar documentos')
-      
+
       const result = await response.json()
       const apiDocs = result.data || []
 
@@ -61,7 +61,7 @@ export function ClienteApp() {
         // Infer memberId from storage_path
         // New Path format: processoId/memberId/docType/file
         let memberId = client.id // Default to main client
-        
+
         if (doc.dependente_id) {
           memberId = doc.dependente_id
         } else if (doc.storage_path) {
@@ -69,7 +69,7 @@ export function ClienteApp() {
           // parts[0] is processoId (or sem_processo)
           // parts[1] is memberId (UUID)
           if (parts.length >= 2) {
-             memberId = parts[1]
+            memberId = parts[1]
           }
         }
 
@@ -147,12 +147,41 @@ export function ClienteApp() {
           if (processosData.data && processosData.data.length > 0) {
             const apiProcesso = processosData.data[0]
             // Map API response to Process type
+            // Map API response to Process type
+            const phases = [
+              { id: 1, name: "Iniciado", description: "O processo foi iniciado e está aguardando documentação." },
+              { id: 2, name: "Documentação", description: "Fase de coleta e análise de documentos." },
+              { id: 3, name: "Consultoria", description: "Análise técnica e consultoria especializada." },
+              { id: 4, name: "Imigração", description: "Processo em fase final de imigração." }
+            ];
+
+            const currentStepId = apiProcesso.etapa_atual || 1;
+
+            const mappedSteps: ProcessStep[] = phases.map(phase => {
+              let status: 'pending' | 'in_progress' | 'completed' | 'waiting' = 'pending';
+
+              if (phase.id < currentStepId) {
+                status = 'completed';
+              } else if (phase.id === currentStepId) {
+                status = 'in_progress';
+              } else {
+                status = 'pending';
+              }
+
+              return {
+                id: phase.id,
+                name: phase.name,
+                status: status,
+                description: phase.description
+              };
+            });
+
             const mappedProcesso: Process = {
               id: apiProcesso.id,
               clientId: mockClient.id,
               serviceType: apiProcesso.tipo_servico,
-              currentStep: apiProcesso.etapa_atual || 1,
-              steps: [], // Steps would come from a separate endpoint or be derived
+              currentStep: currentStepId,
+              steps: mappedSteps,
               createdAt: new Date(apiProcesso.created_at),
               updatedAt: new Date(apiProcesso.updated_at)
             }
@@ -164,7 +193,7 @@ export function ClienteApp() {
         const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/dependentes`)
         if (dependentesRes.ok) {
           const dependentesData = await dependentesRes.json()
-          
+
           // Map dependentes to family members format
           const members = (dependentesData.data || []).map((dep: any) => ({
             id: dep.id,
@@ -540,8 +569,8 @@ export function ClienteApp() {
                 }}
                 onDelete={async (documentId) => {
                   try {
-                     await fetch(`${API_BASE_URL}/cliente/documento/${documentId}`, { method: 'DELETE' })
-                     handleDeleteDocument(documentId)
+                    await fetch(`${API_BASE_URL}/cliente/documento/${documentId}`, { method: 'DELETE' })
+                    handleDeleteDocument(documentId)
                   } catch (e) {
                     console.error("Delete failed", e)
                   }

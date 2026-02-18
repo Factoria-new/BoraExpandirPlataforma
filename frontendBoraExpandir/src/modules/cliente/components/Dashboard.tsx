@@ -21,6 +21,8 @@ import { formatDate, formatDateSimple } from '../lib/utils'
 import { AppointmentReminder } from './AppointmentReminder'
 import { ReminderCard } from './ReminderCard'
 import { CountdownTimer } from './CountdownTimer'
+import { RequestedActionsModal } from './RequestedActionsModal'
+import { RequiredActionModal } from './RequiredActionModal'
 import { clienteService } from '../services/clienteService'
 import { useEffect, useState, useMemo } from 'react'
 
@@ -36,19 +38,19 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
     r.status === 'pendente' || r.status === 'em_analise'
   )
   const totalDocuments = documents.length
-  
+
   // Refined Status Filtering Logic
   const approvedDocuments = documents.filter(doc => doc.status === 'approved').length
-  
+
   const rejectedDocuments = documents.filter(doc => doc.status === 'rejected').length
-  
-  const analyzingDocuments = documents.filter(doc => 
+
+  const analyzingDocuments = documents.filter(doc =>
     doc.status.toLowerCase().includes('analyzing')
   ).length
-  
-  const pendingDocuments = documents.filter(doc => 
-    doc.status === 'pending' || 
-    doc.status === 'sent_for_apostille' || 
+
+  const pendingDocuments = documents.filter(doc =>
+    doc.status === 'pending' ||
+    doc.status === 'sent_for_apostille' ||
     doc.status.toLowerCase().includes('waiting')
   ).length
 
@@ -105,6 +107,7 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
 
   const [notifications, setNotifications] = useState<import('../types').Notification[]>([])
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(false)
+  const [showRequestedActionsModal, setShowRequestedActionsModal] = useState(false)
 
   useEffect(() => {
     const fetchNotifs = async () => {
@@ -135,6 +138,7 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
         deadline: new Date((n.data_prazo || (n as any).deadline) as string),
         priority: 'high' as const
       }))
+      .filter(action => action.deadline >= new Date()) // Hide expired actions from main dashboard
   }, [notifications])
 
   const pendingActionReminders = useMemo(() => {
@@ -147,6 +151,32 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
       actionLink: '/juridico'
     }))
   }, [realPendingActions])
+
+  const [showRequiredActionModal, setShowRequiredActionModal] = useState(false)
+
+  // Auto-open mandatory modal ONLY if there are NEW pending actions not yet seen
+  useEffect(() => {
+    if (realPendingActions.length > 0) {
+      const seenIds = JSON.parse(localStorage.getItem('seenRequiredActionIds') || '[]') as string[]
+      const hasNewActions = realPendingActions.some(action => !seenIds.includes(action.id))
+
+      if (hasNewActions) {
+        setShowRequiredActionModal(true)
+      }
+    }
+  }, [realPendingActions])
+
+  const handleCloseRequiredModal = () => {
+    // When closing, mark all current pending actions as seen
+    const currentIds = realPendingActions.map(a => a.id)
+    const seenIds = JSON.parse(localStorage.getItem('seenRequiredActionIds') || '[]') as string[]
+
+    // Merge new seen IDs
+    const updatedSeenIds = Array.from(new Set([...seenIds, ...currentIds]))
+    localStorage.setItem('seenRequiredActionIds', JSON.stringify(updatedSeenIds))
+
+    setShowRequiredActionModal(false)
+  }
 
   const legalReminders = useMemo(() => [...pendingActionReminders], [pendingActionReminders])
 
@@ -182,26 +212,36 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
 
       {/* Welcome Section */}
       <div className="flex justify-center mb-8">
-        <div className="w-full max-w-3xl bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-8 text-white shadow-lg">
+        <div className="w-full max-w-3xl bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-8 text-white shadow-lg relative">
           <div className="flex items-center justify-center space-x-6">
             <Link to="/cliente/configuracoes?tab=meus-dados" className="flex-shrink-0 transition-transform hover:scale-105 cursor-pointer">
               <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-2 border-white/30 hover:border-white/60">
                 <User className="h-10 w-10" />
               </div>
             </Link>
-            <div className="text-center md:text-left">
-              <h1 className="text-3xl font-bold mb-1">Bem-vindo, {client.name}!</h1>
-              <p className="text-blue-100 text-sm mb-2 opacity-80">ID: {client.id}</p>
-              <div className="flex items-center justify-center md:justify-start space-x-4">
-                <Badge variant="secondary" className="bg-white bg-opacity-20 text-white border-0 px-3 py-1">
-                  Cliente desde {formatDateSimple(client.createdAt)}
-                </Badge>
+            <div className="text-center md:text-left flex-1">
+              <div>
+                <h1 className="text-3xl font-bold mb-1">Bem-vindo, {client.name}!</h1>
+                <p className="text-blue-100 text-sm mb-2 opacity-80">ID: {client.id}</p>
+                <div className="flex items-center justify-center md:justify-start space-x-4">
+                  <Badge variant="secondary" className="bg-white bg-opacity-20 text-white border-0 px-3 py-1">
+                    Cliente desde {formatDateSimple(client.createdAt)}
+                  </Badge>
+                </div>
               </div>
             </div>
+
+            {/* Absolute positioned button for bottom-right */}
+            <button
+              onClick={() => setShowRequestedActionsModal(true)}
+              className="absolute bottom-4 right-4 hidden md:flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20 backdrop-blur-sm"
+            >
+              <AlertTriangle className="w-4 h-4 text-yellow-300" />
+              <span className="font-semibold text-xs">Ações Solicitadas</span>
+            </button>
           </div>
         </div>
       </div>
-
       {/* Reminders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Only show categories that have real reminders */}
@@ -212,7 +252,7 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
             reminders={legalReminders}
           />
         )}
-        
+
         {/* Placeholder for future real data integration without mocks */}
         {legalReminders.length === 0 && (
           <div className="col-span-full text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
@@ -223,26 +263,28 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
       </div>
 
       {/* Required Actions Countdown Section */}
-      {realPendingActions.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {realPendingActions.map(action => (
-            <Card key={action.id} className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-red-700 dark:text-red-400 flex items-center space-x-2 text-lg">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span>{action.title}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{action.description}</p>
-                <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm">
-                  <CountdownTimer targetDate={action.deadline} variant="red" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {
+        realPendingActions.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {realPendingActions.map(action => (
+              <Card key={action.id} className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-red-700 dark:text-red-400 flex items-center space-x-2 text-lg">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span>{action.title}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{action.description}</p>
+                  <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm">
+                    <CountdownTimer targetDate={action.deadline} variant="red" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      }
 
       {/* Stats Grid */}
       <div>
@@ -291,27 +333,27 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
             <div className="space-y-3">
               {process?.steps && process.steps.length > 0 ? (
                 process.steps.map((step, index) => (
-                <div key={step.id} className="flex items-center space-x-3">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step.status === 'completed' ? 'bg-green-500 text-white' :
-                    step.status === 'in_progress' ? 'bg-blue-500 text-white' :
-                      'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                    }`}>
-                    {index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
-                      step.status === 'in_progress' ? 'text-blue-700 dark:text-blue-400' :
-                        'text-gray-500 dark:text-gray-400'
+                  <div key={step.id} className="flex items-center space-x-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step.status === 'completed' ? 'bg-green-500 text-white' :
+                      step.status === 'in_progress' ? 'bg-blue-500 text-white' :
+                        'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                       }`}>
-                      {step.name}
-                    </p>
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm font-medium ${step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
+                        step.status === 'in_progress' ? 'text-blue-700 dark:text-blue-400' :
+                          'text-gray-500 dark:text-gray-400'
+                        }`}>
+                        {step.name}
+                      </p>
+                    </div>
+                    <div>
+                      {step.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                      {step.status === 'in_progress' && <Clock className="h-4 w-4 text-blue-500" />}
+                    </div>
                   </div>
-                  <div>
-                    {step.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                    {step.status === 'in_progress' && <Clock className="h-4 w-4 text-blue-500" />}
-                  </div>
-                </div>
-              ))
+                ))
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo do processo disponível.</p>
@@ -357,7 +399,7 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
                       {doc.status === 'pending' ? 'Pendente' :
                         doc.status.toLowerCase().includes('analyzing') ? 'Análise' :
                           doc.status === 'approved' ? 'Aprovado' :
-                            doc.status === 'rejected' ? 'Rejeitado' : 
+                            doc.status === 'rejected' ? 'Rejeitado' :
                               doc.status.replace('_', ' ')}
                     </Badge>
                   </div>
@@ -367,6 +409,19 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
           </CardContent>
         </Card>
       </div>
-    </div>
+
+      {/* Modals */}
+      <RequestedActionsModal
+        isOpen={showRequestedActionsModal}
+        onClose={() => setShowRequestedActionsModal(false)}
+        notifications={notifications}
+      />
+
+      <RequiredActionModal
+        isOpen={showRequiredActionModal}
+        onClose={handleCloseRequiredModal}
+        actions={realPendingActions}
+      />
+    </div >
   )
 }

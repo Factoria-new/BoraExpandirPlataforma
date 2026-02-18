@@ -55,7 +55,7 @@ export function FormsDeclarationsCard({
     const [isLoading, setIsLoading] = useState(false)
     const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
     const [sentFormsMap, setSentFormsMap] = useState<Map<string, any>>(new Map())
-    
+
     // Upload Confirmation State
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [isUploadingFile, setIsUploadingFile] = useState(false)
@@ -71,7 +71,7 @@ export function FormsDeclarationsCard({
     useEffect(() => {
         const fetchForms = async () => {
             console.log('===> Fetching Forms STARTED')
-            
+
             if (!processoId || !memberId) {
                 return
             }
@@ -79,7 +79,7 @@ export function FormsDeclarationsCard({
             setIsLoading(true)
             try {
                 const res = await fetch(`${API_BASE_URL}/cliente/processo/${processoId}/formularios/${memberId}`)
-                
+
                 if (res.ok) {
                     const data = await res.json()
                     setForms(data.data || [])
@@ -95,9 +95,9 @@ export function FormsDeclarationsCard({
             try {
                 // Use clienteId se fornecido, senão use memberId (para titular)
                 const targetClientId = clienteId || memberId
-                
+
                 const responses = await clienteService.getFormularioResponses(targetClientId)
-                
+
                 // Filtrar pelas respostas que pertencem a este membro específico
                 const memberResponses = responses.filter((r: any) => {
                     if (isTitular) {
@@ -105,13 +105,13 @@ export function FormsDeclarationsCard({
                     }
                     return r.membro_id === memberId
                 })
-                
+
                 // Criar mapa de formulário_id -> resposta completa
                 const responsesMap = new Map()
                 memberResponses.forEach((r: any) => {
                     responsesMap.set(r.formulario_juridico_id, r)
                 })
-                
+
                 setSentFormsMap(responsesMap)
             } catch (error) {
                 console.error('Erro ao buscar formulários enviados:', error)
@@ -147,7 +147,7 @@ export function FormsDeclarationsCard({
         if (file && onUpload) {
             const form = forms.find(f => f.id === formularioId)
             const sentResponse = sentFormsMap.get(formularioId)
-            
+
             setPendingUpload({
                 file,
                 formularioId,
@@ -156,7 +156,7 @@ export function FormsDeclarationsCard({
             })
             setShowConfirmModal(true)
             setUploadError(null)
-            
+
             e.target.value = '' // Reset input
         }
     }
@@ -170,7 +170,7 @@ export function FormsDeclarationsCard({
         try {
             // 1. Comprimir
             const compressedFile = await compressFile(pendingUpload.file)
-            
+
             // 2. Upload
             await onUpload(compressedFile, pendingUpload.formularioId)
 
@@ -210,7 +210,7 @@ export function FormsDeclarationsCard({
                     </div>
                     <div className="text-left">
                         <h4 className="font-semibold text-purple-900 dark:text-purple-100">
-                            Documentos Pedidos
+                            Fomulários Solicitados
                         </h4>
                         <p className="text-xs text-purple-600 dark:text-purple-400">
                             Formulários para preencher e assinar
@@ -255,15 +255,14 @@ export function FormsDeclarationsCard({
                             const status = sentResponse?.status || 'pendente' // pendente, aprovado, rejeitado
                             const isApproved = status === 'aprovado'
                             const isRejected = status === 'rejeitado'
-                            
+
                             return (
                                 <div
                                     key={form.id}
-                                    className={`flex flex-col p-3 bg-white dark:bg-gray-800 rounded-lg border hover:shadow-sm transition-shadow ${
-                                        isRejected ? 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/10' : 
+                                    className={`flex flex-col p-3 bg-white dark:bg-gray-800 rounded-lg border hover:shadow-sm transition-shadow ${isRejected ? 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/10' :
                                         isApproved ? 'border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-900/10' :
-                                        'border-gray-200 dark:border-gray-700'
-                                    }`}
+                                            'border-gray-200 dark:border-gray-700'
+                                        }`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -275,19 +274,19 @@ export function FormsDeclarationsCard({
                                                     <p className="font-medium text-gray-900 dark:text-white text-sm">
                                                         {form.name}
                                                     </p>
-                                                    
+
                                                     {isApproved && (
                                                         <Badge className="text-[10px] h-5 bg-green-600 hover:bg-green-700 text-white border-none flex gap-1 items-center">
                                                             ✓ Aprovado
                                                         </Badge>
                                                     )}
-                                                    
+
                                                     {isRejected && (
                                                         <Badge variant="destructive" className="text-[10px] h-5 flex gap-1 items-center">
                                                             ✕ Rejeitado
                                                         </Badge>
                                                     )}
-                                                    
+
                                                     {isSent && !isApproved && !isRejected && (
                                                         <Badge className="text-[10px] h-5 bg-yellow-500 hover:bg-yellow-600 text-white border-none">
                                                             Aguardando Análise
@@ -307,8 +306,8 @@ export function FormsDeclarationsCard({
                                             {/* Upload Signed Button */}
                                             {onUpload && !isApproved && (
                                                 <>
-                                                    <input 
-                                                        type="file" 
+                                                    <input
+                                                        type="file"
                                                         id={`upload-form-${form.id}`}
                                                         className="hidden"
                                                         accept=".pdf,application/pdf"
@@ -316,11 +315,10 @@ export function FormsDeclarationsCard({
                                                     />
                                                     <Button
                                                         size="sm"
-                                                        className={`h-8 px-3 text-xs ${
-                                                            isRejected 
-                                                            ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                                        className={`h-8 px-3 text-xs ${isRejected
+                                                            ? 'bg-red-600 hover:bg-red-700 text-white'
                                                             : 'bg-purple-600 hover:bg-purple-700 text-white'
-                                                        }`}
+                                                            }`}
                                                         onClick={() => handleUploadClick(form.id)}
                                                         disabled={isSent && !isRejected} // Disable if sent and NOT rejected (pending)
                                                     >
@@ -352,7 +350,7 @@ export function FormsDeclarationsCard({
                                             )}
                                         </div>
                                     </div>
-                                    
+
                                     {/* Rejection Reason */}
                                     {isRejected && sentResponse?.motivo_rejeicao && (
                                         <div className="mt-2 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900/30">
