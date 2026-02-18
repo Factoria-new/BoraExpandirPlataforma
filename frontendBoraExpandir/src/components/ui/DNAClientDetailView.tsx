@@ -19,6 +19,8 @@ import { ProcessAction } from '../../modules/juridico/components/ProcessAction'
 import { DocumentRequestModal } from '../../modules/juridico/components/DocumentRequestModal'
 import { RequirementRequestModal } from '../../modules/juridico/components/RequirementRequestModal'
 import { FormsDeclarationsSection } from '../../modules/juridico/components/FormsDeclarationsSection'
+import { RequirementsSection } from '../../modules/juridico/components/RequirementsSection'
+import juridicoService from '../../modules/juridico/services/juridicoService'
 
 export function DNAClientDetailView({
     client,
@@ -36,6 +38,22 @@ export function DNAClientDetailView({
     const [isDocModalOpen, setIsDocModalOpen] = useState(false)
     const [isReqModalOpen, setIsReqModalOpen] = useState(false)
     const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+    const [members, setMembers] = useState<any[]>([])
+    const [loadingMembers, setLoadingMembers] = useState(false)
+    const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
+
+    // Handle adding document to a specific requirement
+    const handleAddDocToReq = (reqId: string) => {
+        setSelectedRequerimentoId(reqId)
+        setIsDocModalOpen(true)
+    }
+
+    // Reset requirement ID when modal closes
+    useEffect(() => {
+        if (!isDocModalOpen && selectedRequerimentoId) {
+            setSelectedRequerimentoId(undefined)
+        }
+    }, [isDocModalOpen, selectedRequerimentoId])
 
     const fetchNotes = useCallback(async () => {
         try {
@@ -64,6 +82,34 @@ export function DNAClientDetailView({
     useEffect(() => {
         fetchNotes()
     }, [fetchNotes])
+
+    useEffect(() => {
+        const fetchMembers = async () => {
+            if (!client.true_id && !client.id) return
+            setLoadingMembers(true)
+            try {
+                const depData = await juridicoService.getDependentes(client.true_id || client.id)
+                const titular = {
+                    id: client.true_id || client.id,
+                    name: client.nome,
+                    type: 'Titular',
+                    isTitular: true
+                }
+                const formattedDeps = depData.map((d: any) => ({
+                    id: d.id,
+                    name: d.nome_completo || d.name,
+                    type: d.parentesco || 'Dependente',
+                    isTitular: false
+                }))
+                setMembers([titular, ...formattedDeps])
+            } catch (err) {
+                console.error('Erro ao buscar membros:', err)
+            } finally {
+                setLoadingMembers(false)
+            }
+        }
+        fetchMembers()
+    }, [client.id, client.true_id, client.nome])
 
     const toggleStage = (stageId: string) => {
         const next = new Set(expandedStages)
@@ -320,26 +366,24 @@ export function DNAClientDetailView({
                                 }}
                             />
                         </div>
+                        {/* Requirements Section */}
+                        <RequirementsSection 
+                            clienteId={client.true_id || client.id}
+                            processoId={client.processo_id || ''}
+                            members={members}
+                            onAddRequirement={() => setIsReqModalOpen(true)}
+                            onAddDocumentToRequirement={handleAddDocToReq}
+                        />
 
-                        {/* Notas Gerais (sem etapa) */}
-                        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-                            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Post-it</h3>
-                            <div className="space-y-3">
-                                {notes.filter(n => !n.stageId).length === 0 ? (
-                                    <p className="text-xs text-muted-foreground text-center py-4 italic">Nenhuma nota geral</p>
-                                ) : (
-                                    notes.filter(n => !n.stageId).map(note => (
-                                        <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-3 text-xs">
-                                            <p className="text-foreground/90">{note.text}</p>
-                                            <div className="flex justify-between mt-2 opacity-50">
-                                                <span>{note.author}</span>
-                                                <span>{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
+                        <FormsDeclarationsSection
+                            isOpen={isFormModalOpen}
+                            onOpenChange={setIsFormModalOpen}
+                            clienteId={client.true_id || client.id}
+                            processoId={client.processo_id || ''}
+                            clientName={client.nome}
+                            members={members}
+                            hideTrigger={true}
+                        />
                     </div>
                 </div>
             </div>
@@ -349,6 +393,8 @@ export function DNAClientDetailView({
                 onOpenChange={setIsDocModalOpen}
                 clienteId={client.true_id || client.id}
                 processoId={client.processo_id}
+                members={members}
+                initialRequerimentoId={selectedRequerimentoId}
             />
 
             <RequirementRequestModal 
@@ -356,16 +402,7 @@ export function DNAClientDetailView({
                 onOpenChange={setIsReqModalOpen}
                 clienteId={client.true_id || client.id}
                 processoId={client.processo_id}
-            />
-
-            <FormsDeclarationsSection
-                isOpen={isFormModalOpen}
-                onOpenChange={setIsFormModalOpen}
-                clienteId={client.true_id || client.id}
-                processoId={client.processo_id || ''}
-                clientName={client.nome}
-                members={[]} // In DNA view, we might not have the full members list easily available here
-                hideTrigger={true}
+                members={members}
             />
         </div>
     )

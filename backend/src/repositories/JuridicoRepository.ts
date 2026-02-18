@@ -26,6 +26,7 @@ interface SolicitarDocumentoParams {
     tipo: string
     processoId?: string
     membroId?: string
+    requerimentoId?: string // Link to a requirement entity
     notificar?: boolean
     prazo?: number
     criadorId?: string // ID do funcionário que está fazendo a solicitação
@@ -709,7 +710,8 @@ class JuridicoRepository {
                 cliente_id: params.clienteId,
                 tipo: params.tipo,
                 processo_id: params.processoId || null,
-                dependente_id: params.membroId || null,
+                dependente_id: params.membroId === params.clienteId ? null : (params.membroId || null),
+                requerimento_id: params.requerimentoId || null,
                 status: 'PENDING',
                 nome_original: params.tipo,
                 nome_arquivo: params.tipo,
@@ -799,7 +801,10 @@ class JuridicoRepository {
     async getRequerimentosByClienteId(clienteId: string): Promise<any[]> {
         const { data, error } = await supabase
             .from('requerimentos')
-            .select('*')
+            .select(`
+                *,
+                documentos (*)
+            `)
             .eq('cliente_id', clienteId)
             .order('created_at', { ascending: false })
 

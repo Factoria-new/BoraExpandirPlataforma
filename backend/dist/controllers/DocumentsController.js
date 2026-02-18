@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.documentsController = void 0;
-const SupabaseClient_1 = require("../config/SupabaseClient");
+const DocumentsRepository_1 = require("../repositories/DocumentsRepository");
 class DocumentsController {
     async uploadDocument(req, res) {
         try {
@@ -9,15 +9,7 @@ class DocumentsController {
             if (!file || !file.name || !file.content) {
                 return res.status(400).json({ error: 'Parâmetros inválidos: file.name e file.content são obrigatórios.' });
             }
-            const { data, error } = await SupabaseClient_1.supabase.storage
-                .from('documents')
-                .upload(`public/${file.name}`, file.content, {
-                contentType: file.type || 'application/octet-stream',
-                upsert: false,
-            });
-            if (error) {
-                return res.status(500).json({ error: error.message });
-            }
+            const data = await DocumentsRepository_1.documentsRepository.saveFileToBucket(req.body.usuarioId, file);
             return res.status(200).json({ message: 'File uploaded successfully', data });
         }
         catch (err) {

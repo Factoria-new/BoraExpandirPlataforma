@@ -38,5 +38,16 @@ export const clienteService = {
     
     const result = await response.json();
     return result.data || [];
+  },
+
+  async getRequerimentos(clienteId: string) {
+    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/requerimentos`);
+    
+    if (!response.ok) {
+      throw new Error('Falha ao buscar requerimentos');
+    }
+    
+    const result = await response.json();
+    return result.data || [];
   }
 };

@@ -12,6 +12,7 @@ import cliente from './routes/cliente'
 import comercial from './routes/comercial'
 import juridico from './routes/juridico'
 import traducoes from './routes/traducoes'
+import config from './routes/config'
 
 dotenv.config()
 
@@ -41,6 +42,7 @@ app.use('/cliente', cliente)
 app.use('/comercial', comercial)
 app.use('/juridico', juridico)
 app.use('/traducoes', traducoes)
+app.use('/configuracoes', config)
 
 
 

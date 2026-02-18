@@ -11,7 +11,8 @@ import { clienteService } from '../services/clienteService'
 import { UploadConfirmModal } from './UploadConfirmModal'
 import { ApostilleQuoteModal } from './ApostilleQuoteModal'
 import { TranslationQuoteModal } from './TranslationPaymentModal'
-import { DollarSign } from 'lucide-react'
+import { DollarSign, Briefcase } from 'lucide-react'
+import { RequirementsCard } from './RequirementsCard'
 
 interface FamilyMember {
   id: string
@@ -1187,14 +1188,21 @@ export function FamilyFolderCard({
 
         {/* Formulários e Declarações Section */}
         {processoId && (
-          <FormsDeclarationsCard
-            memberId={member.id}
-            memberName={member.name}
-            processoId={processoId}
-            clienteId={member.clienteId}
-            isTitular={member.isTitular}
-            onUpload={handleFormResponseUpload}
-          />
+          <div className="px-4 pb-2">
+            <FormsDeclarationsCard
+              memberId={member.id}
+              memberName={member.name}
+              processoId={processoId}
+              clienteId={member.clienteId}
+              isTitular={member.isTitular}
+              onUpload={handleFormResponseUpload}
+            />
+
+            <RequirementsCard
+              clienteId={member.clienteId || member.id}
+              processoId={processoId}
+            />
+          </div>
         )}
 
       </Card>

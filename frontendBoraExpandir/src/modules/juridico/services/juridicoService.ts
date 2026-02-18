@@ -316,6 +316,8 @@ export async function requestDocument(payload: {
   clienteId: string;
   tipo: string;
   processoId?: string;
+  membroId?: string;
+  requerimentoId?: string;
   notificar?: boolean;
   prazo?: number;
 }): Promise<any> {

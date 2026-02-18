@@ -74,7 +74,18 @@ class TraducoesRepository {
     prazoEntrega: string
     observacoes?: string
   }) {
-    // 1. Inserir o orçamento na tabela 'orcamentos'
+    // 1. Buscar a porcentagem padrão de markup configurada
+    const { data: configData, error: configError } = await supabase
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'markup_padrao')
+      .single()
+
+    // Fallback para 20% se houver erro (ex: tabela não existe) ou não houver valor
+    const markup = (configData?.valor && !configError) ? parseFloat(configData.valor) : 20 
+    const precoAtualizado = dados.valorOrcamento * (1 + markup / 100)
+
+    // 2. Inserir o orçamento na tabela 'orcamentos' já com o cálculo e status disponível
     const { data: orcamento, error: orcError } = await supabase
       .from('orcamentos')
       .insert([{
@@ -82,7 +93,9 @@ class TraducoesRepository {
         valor_orcamento: dados.valorOrcamento,
         prazo_entrega: dados.prazoEntrega,
         observacoes: dados.observacoes,
-        status: 'em_analise' // Visível apenas para o Admin inicialmente
+        porcentagem: markup,
+        preco_atualizado: precoAtualizado,
+        status: 'disponivel' // Agora já entra liberado se o ADM configurou a regra
       }])
       .select()
       .single()
@@ -91,6 +104,12 @@ class TraducoesRepository {
       console.error('Erro ao salvar orçamento:', orcError)
       throw orcError
     }
+
+    // 3. Atualizar o status do documento para liberar visualização/pagamento pro cliente
+    await supabase
+      .from('documentos')
+      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .eq('id', dados.documentoId)
 
     return orcamento
   }

@@ -78,6 +78,24 @@ model Dependente {
   @@map("dependentes")
 }
 
+// Modelo para Requerimentos estruturados
+model Requerimento {
+  id              String      @id @default(uuid()) @db.Uuid
+  clienteId       String      @db.Uuid @map("cliente_id")
+  processoId      String?     @db.Uuid @map("processo_id")
+  tipo            String
+  status          String      @default("pendente")
+  observacoes     String?
+  criadorId       String?     @db.Uuid @map("criador_id")
+  
+  documentos      Documento[]
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updated_at      DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  @@map("requerimentos")
+}
+
 // Modelo para armazenar documentos dos clientes
 model Documento {
   id              String          @id @default(uuid()) @db.Uuid
@@ -91,6 +109,9 @@ model Documento {
 
   dependenteId    String?         @db.Uuid @map("dependente_id")
   dependente      Dependente?     @relation(fields: [dependenteId], references: [id], onDelete: SetNull)
+  
+  requerimentoId  String?         @db.Uuid @map("requerimento_id")
+  requerimento    Requerimento?   @relation(fields: [requerimentoId], references: [id], onDelete: SetNull)
   
   // Informações do arquivo
   tipo            String          // Tipo do documento (passport, identity, proof_of_address, etc.)
@@ -118,5 +139,15 @@ model Documento {
   @@index([status])
   @@index([processoId])
   @@index([dependenteId])
+  @@index([requerimentoId])
   @@map("documentos")
+}
+
+model Configuracao {
+  chave        String   @id
+  valor        String
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("configuracoes")
 }

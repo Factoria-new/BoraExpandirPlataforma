@@ -565,7 +565,7 @@ class JuridicoController {
     // POST /juridico/documentos/solicitar - Solicitar documento
     async solicitarDocumento(req: any, res: any) {
         try {
-            const { clienteId, tipo, processoId, membroId, notificar, prazo } = req.body
+            const { clienteId, tipo, processoId, membroId, requerimentoId, notificar, prazo } = req.body
 
             if (!clienteId || !tipo) {
                 return res.status(400).json({ 
@@ -581,6 +581,7 @@ class JuridicoController {
                 tipo,
                 processoId,
                 membroId,
+                requerimentoId,
                 notificar,
                 prazo,
                 criadorId
