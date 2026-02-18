@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils'
 import { ClientDNAData, ClientNote, CATEGORIAS_LIST, formatDate } from './ClientDNA'
 import { ProcessAction } from '../../modules/juridico/components/ProcessAction'
 import { DocumentRequestModal } from '../../modules/juridico/components/DocumentRequestModal'
+import { RequirementRequestModal } from '../../modules/juridico/components/RequirementRequestModal'
+import { FormsDeclarationsSection } from '../../modules/juridico/components/FormsDeclarationsSection'
 
 export function DNAClientDetailView({
     client,
@@ -32,6 +34,8 @@ export function DNAClientDetailView({
     const [loadingNotes, setLoadingNotes] = useState(false)
     const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set([client.categoria]))
     const [isDocModalOpen, setIsDocModalOpen] = useState(false)
+    const [isReqModalOpen, setIsReqModalOpen] = useState(false)
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false)
 
     const fetchNotes = useCallback(async () => {
         try {
@@ -306,6 +310,10 @@ export function DNAClientDetailView({
                                 onActionClick={(action) => {
                                     if (action === 'solicitar_documentos') {
                                         setIsDocModalOpen(true)
+                                    } else if (action === 'solicitar_requerimento') {
+                                        setIsReqModalOpen(true)
+                                    } else if (action === 'solicitar_formulario') {
+                                        setIsFormModalOpen(true)
                                     } else {
                                         console.log('Action triggered:', action)
                                     }
@@ -341,6 +349,23 @@ export function DNAClientDetailView({
                 onOpenChange={setIsDocModalOpen}
                 clienteId={client.true_id || client.id}
                 processoId={client.processo_id}
+            />
+
+            <RequirementRequestModal 
+                isOpen={isReqModalOpen}
+                onOpenChange={setIsReqModalOpen}
+                clienteId={client.true_id || client.id}
+                processoId={client.processo_id}
+            />
+
+            <FormsDeclarationsSection
+                isOpen={isFormModalOpen}
+                onOpenChange={setIsFormModalOpen}
+                clienteId={client.true_id || client.id}
+                processoId={client.processo_id || ''}
+                clientName={client.nome}
+                members={[]} // In DNA view, we might not have the full members list easily available here
+                hideTrigger={true}
             />
         </div>
     )

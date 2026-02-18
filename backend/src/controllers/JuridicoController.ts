@@ -599,6 +599,41 @@ class JuridicoController {
         }
     }
 
+    // POST /juridico/requerimentos/solicitar - Solicitar requerimento
+    async solicitarRequerimento(req: any, res: any) {
+        try {
+            const { clienteId, tipo, processoId, observacoes } = req.body
+
+            if (!clienteId || !tipo) {
+                return res.status(400).json({ 
+                    message: 'clienteId e tipo são obrigatórios' 
+                })
+            }
+
+            // TODO: Pegar do middleware de auth
+            const criadorId = req.body.criadorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+
+            const requerimento = await JuridicoRepository.solicitarRequerimento({
+                clienteId,
+                tipo,
+                processoId,
+                observacoes,
+                criadorId
+            })
+
+            return res.status(201).json({
+                message: 'Solicitação de requerimento criada com sucesso',
+                data: requerimento
+            })
+        } catch (error: any) {
+            console.error('Erro ao solicitar requerimento no controller:', error)
+            return res.status(500).json({
+                message: 'Erro ao solicitar requerimento',
+                error: error.message
+            })
+        }
+    }
+
     // PATCH /juridico/processo/:processoId/etapa - Atualizar etapa do processo
     async updateEtapaProcesso(req: any, res: any) {
         try {

@@ -13,7 +13,8 @@ import {
   User,
   Target,
   TrendingUp,
-  XCircle
+  XCircle,
+  Stamp
 } from 'lucide-react'
 import { Client, Document, Process } from '../types'
 import { formatDate, formatDateSimple } from '../lib/utils'
@@ -27,9 +28,13 @@ interface DashboardProps {
   client: Client
   documents: Document[]
   process: Process | null
+  requerimentos?: any[]
 }
 
-export function Dashboard({ client, documents, process }: DashboardProps) {
+export function Dashboard({ client, documents, process, requerimentos = [] }: DashboardProps) {
+  const pendingRequerimentos = requerimentos.filter(r => 
+    r.status === 'pendente' || r.status === 'em_analise'
+  )
   const totalDocuments = documents.length
   
   // Refined Status Filtering Logic
@@ -147,6 +152,34 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
 
   return (
     <div className="space-y-8">
+      {/* Requirement Alert Banner */}
+      {pendingRequerimentos.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-top duration-500">
+          <Link to="/cliente/requerimentos" className="block transform transition-all hover:scale-[1.01] active:scale-[0.99]">
+            <div className="bg-red-600 border border-red-500 rounded-2xl p-4 md:p-5 text-white shadow-lg flex items-center justify-between group overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
+                <AlertTriangle className="h-24 w-24" />
+              </div>
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="bg-white/20 p-3 rounded-xl animate-pulse">
+                  <Stamp className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">Ação Necessária em Requerimentos</h3>
+                  <p className="text-red-100 text-sm opacity-90">
+                    Você possui {pendingRequerimentos.length === 1 ? '1 requerimento que necessita' : `${pendingRequerimentos.length} requerimentos que necessitam`} de sua atenção.
+                  </p>
+                </div>
+              </div>
+              <div className="hidden md:flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl font-bold text-sm backdrop-blur-sm group-hover:bg-white text-white group-hover:text-red-600 transition-all">
+                Ver Requerimentos
+                <TrendingUp className="h-4 w-4 rotate-90" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+
       {/* Welcome Section */}
       <div className="flex justify-center mb-8">
         <div className="w-full max-w-3xl bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-8 text-white shadow-lg">

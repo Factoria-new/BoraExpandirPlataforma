@@ -31,6 +31,14 @@ interface SolicitarDocumentoParams {
     criadorId?: string // ID do funcionário que está fazendo a solicitação
 }
 
+interface SolicitarRequerimentoParams {
+    clienteId: string
+    tipo: string
+    processoId?: string
+    observacoes?: string
+    criadorId?: string
+}
+
 class JuridicoRepository {
 
     // =============================================
@@ -86,7 +94,8 @@ class JuridicoRepository {
                     full_name,
                     email
                 ),
-                documentos (*)
+                documentos (*),
+                requerimentos (*)
             `)
             .order('created_at', { ascending: false })
 
@@ -166,7 +175,8 @@ class JuridicoRepository {
                     nome,
                     email
                 ),
-                documentos (*)
+                documentos (*),
+                requerimentos (*)
             `)
             .eq('responsavel_id', responsavelId)
             .order('created_at', { ascending: false })
@@ -753,6 +763,52 @@ class JuridicoRepository {
         
         console.log('=====================================================')
         return doc
+    }
+
+    // Solicitar um requerimento
+    async solicitarRequerimento(params: SolicitarRequerimentoParams): Promise<any> {
+        console.log('========== SOLICITAR REQUERIMENTO REPO DEBUG ==========')
+        console.log('Params:', params)
+
+        const { data, error } = await supabase
+            .from('requerimentos')
+            .insert([{
+                cliente_id: params.clienteId,
+                processo_id: params.processoId || null,
+                tipo: params.tipo,
+                status: 'pendente',
+                criador_id: params.criadorId || null,
+                observacoes: params.observacoes || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao solicitar requerimento no repositório:', error)
+            throw error
+        }
+
+        console.log('Requerimento solicitado com sucesso:', data.id)
+        console.log('========================================================')
+        return data
+    }
+
+    // Buscar requerimentos de um cliente
+    async getRequerimentosByClienteId(clienteId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('requerimentos')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar requerimentos do cliente:', error)
+            throw error
+        }
+
+        return data || []
     }
 }
 

@@ -36,6 +36,7 @@ export interface Processo {
   status: string;
   etapa_atual: number;
   documentos: any[];
+  requerimentos?: any[];
   responsavel_id: string | null;
   delegado_em: string | null;
   observacoes: string | null;
@@ -334,6 +335,30 @@ export async function requestDocument(payload: {
 }
 
 /**
+ * Solicita um novo requerimento
+ */
+export async function requestRequirement(payload: {
+  clienteId: string;
+  tipo: string;
+  processoId?: string;
+  observacoes?: string;
+}): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/requerimentos/solicitar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro ao solicitar requerimento');
+  }
+
+  return response.json();
+}
+
+/**
  * Atualiza a etapa (fase) de um processo
  */
 export async function updateProcessEtapa(processoId: string, etapa: number): Promise<any> {
@@ -369,5 +394,6 @@ export default {
     getDependentes,
     updateDocumentStatus,
     requestDocument,
+    requestRequirement,
     updateProcessEtapa
 };

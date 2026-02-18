@@ -90,11 +90,14 @@ export default function Tradutora() {
         parIdiomas: { origem: 'PT', destino: 'IT' }, // Default for now
         status: 
           item.status === 'disponivel' ? ('aprovado' as const) :
-          item.status === 'WAITING_QUOTE_APPROVAL' || item.status === 'em_analise' ? ('respondido' as const) : 
+          item.orcamento ? ('respondido' as const) : 
           ('pendente' as const),
         storagePath: item.storage_path,
         publicUrl: item.public_url,
         documentoId: item.id,
+        processoId: item.processo_id,
+        dependenteId: item.dependente_id,
+        dependente: item.dependente,
         created_at: item.criado_em,
         updated_at: item.atualizado_em,
         prazoDesejado: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default 7 days from now

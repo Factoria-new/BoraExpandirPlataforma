@@ -172,7 +172,10 @@ export default function FinanceiroPrecos() {
                   </td>
                 </tr>
               ) : filteredDocs.map((doc) => {
-                const isWaiting = doc.orcamento?.status === 'em_analise'
+                const hasOrcamento = !!doc.orcamento
+                const isWaitingAdm = doc.orcamento?.status === 'em_analise'
+                const isFinalized = doc.orcamento?.status === 'disponivel' || doc.orcamento?.status === 'aprovado'
+                
                 const basePrice = doc.orcamento?.valor_orcamento || 0
                 const markup = editingMarkups[doc.id] || 0
                 const finalPrice = calculateFinalPrice(basePrice, markup)
@@ -187,23 +190,38 @@ export default function FinanceiroPrecos() {
                         <div>
                           <p className="font-bold text-gray-900 dark:text-white">{doc.nome_original}</p>
                           <p className="text-xs text-gray-500 uppercase font-medium">{doc.clientes?.nome || 'Desconhecido'}</p>
-                          <Badge variant="outline" className={cn(
-                            "mt-1 text-[10px]",
-                            isWaiting ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-green-50 text-green-600 border-green-200"
-                          )}>
-                             {isWaiting ? 'Aguardando Aprovação ADM' : 'Liberado p/ Cliente'}
-                          </Badge>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {!hasOrcamento && (
+                              <Badge variant="outline" className="text-[10px] bg-gray-50 text-gray-500 border-gray-200">
+                                Aguardando Tradutor
+                              </Badge>
+                            )}
+                            {isWaitingAdm && (
+                              <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200">
+                                Aguardando Aprovação ADM
+                              </Badge>
+                            )}
+                            {isFinalized && (
+                              <Badge variant="outline" className="text-[10px] bg-green-50 text-green-600 border-green-200">
+                                Liberado p/ Cliente
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-600 dark:text-gray-400">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(basePrice)}
+                      {hasOrcamento ? (
+                        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(basePrice)
+                      ) : (
+                        <span className="text-gray-300 italic text-xs">A definir</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                        <div className="flex items-center gap-2 max-w-[100px]">
                           <Input 
                             type="number" 
-                            disabled={!isWaiting}
+                            disabled={!isWaitingAdm}
                             value={markup}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleMarkupChange(doc.id, e.target.value)}
                             className="h-9 font-bold text-center border-gray-200"
@@ -212,15 +230,19 @@ export default function FinanceiroPrecos() {
                        </div>
                     </td>
                     <td className="px-6 py-4">
-                       <div className="flex flex-col">
-                          <span className="text-xl font-black text-blue-600">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(finalPrice)}
-                          </span>
-                          <span className="text-[10px] text-green-600 font-bold">LUCRO: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(finalPrice - basePrice)}</span>
-                       </div>
+                       {hasOrcamento ? (
+                         <div className="flex flex-col">
+                            <span className="text-xl font-black text-blue-600">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(finalPrice)}
+                            </span>
+                            <span className="text-[10px] text-green-600 font-bold">LUCRO: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(finalPrice - basePrice)}</span>
+                         </div>
+                       ) : (
+                         <span className="text-gray-300 italic text-xs">A definir</span>
+                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                       {isWaiting ? (
+                       {isWaitingAdm ? (
                          <Button 
                            onClick={() => handleApprove(doc)}
                            className="bg-green-600 hover:bg-green-700 text-white font-bold gap-2 rounded-xl"
@@ -228,8 +250,10 @@ export default function FinanceiroPrecos() {
                             <CheckCircle2 className="h-4 w-4" />
                             APROVAR
                          </Button>
+                       ) : isFinalized ? (
+                         <Badge className="bg-green-100 text-green-700 border-none font-bold">FINALIZADO</Badge>
                        ) : (
-                         <Badge className="bg-green-100 text-green-700 border-none">FINALIZADO</Badge>
+                         <Badge variant="outline" className="text-gray-400 border-gray-200 font-medium">PENDENTE</Badge>
                        )}
                     </td>
                   </tr>

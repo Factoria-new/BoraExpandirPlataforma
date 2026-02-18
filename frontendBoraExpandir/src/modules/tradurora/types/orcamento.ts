@@ -20,6 +20,13 @@ export interface OrcamentoItem {
   created_at: string
   updated_at: string
   documentoId: string
+  processoId?: string
+  dependenteId?: string
+  dependente?: {
+    id: string
+    nome_completo: string
+    parentesco: string
+  }
 }
 
 export interface OrcamentoFormData {

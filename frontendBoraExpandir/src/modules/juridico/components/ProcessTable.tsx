@@ -30,6 +30,7 @@ export interface ProcessData {
     prazoResposta?: number;
     observacao?: string;
     valorAcao: string;
+    hasRequirement?: boolean;
 }
 
 interface ProcessTableProps {
@@ -105,6 +106,11 @@ export function ProcessTable({ data }: ProcessTableProps) {
                                     </div>
                                     <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{row.servico}</div>
                                 </div>
+                                {row.hasRequirement && (
+                                    <Badge variant="destructive" className="ml-2 animate-pulse text-[8px] px-1 py-0 h-4 min-w-[60px] flex items-center justify-center">
+                                        REQUERIMENTO
+                                    </Badge>
+                                )}
                             </div>
 
                             <div className="col-span-3 text-center">

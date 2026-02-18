@@ -5,7 +5,7 @@ class TraducoesRepository {
     // 1. Buscar os documentos com status WAITING_TRANSLATION_QUOTE ou WAITING_QUOTE_APPROVAL
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
-      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id')
+      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
       .in('status', ['solicitado', 'WAITING_TRANSLATION_QUOTE', 'em_analise', 'disponivel'])
       .order('criado_em', { ascending: false })
 
@@ -16,12 +16,13 @@ class TraducoesRepository {
 
     if (!documentos || documentos.length === 0) return []
 
-    // 2. Coletar IDs únicos de clientes e documentos
+    // 2. Coletar IDs únicos de clientes, documentos e dependentes
     const clienteIds = [...new Set(documentos.map(d => d.cliente_id))]
     const documentoIds = documentos.map(d => d.id)
+    const dependenteIds = [...new Set(documentos.map(d => d.dependente_id).filter(id => id !== null))]
 
-    // 3. Buscar dados dos clientes e orçamentos em paralelo
-    const [clientesRes, orcamentosRes] = await Promise.all([
+    // 3. Buscar dados dos clientes, orçamentos e dependentes em paralelo
+    const [clientesRes, orcamentosRes, dependentesRes] = await Promise.all([
       supabase
         .from('clientes')
         .select('id, nome, email, whatsapp')
@@ -30,7 +31,11 @@ class TraducoesRepository {
         .from('orcamentos')
         .select('*, porcentagem, preco_atualizado')
         .in('documento_id', documentoIds)
-        .order('criado_em', { ascending: false })
+        .order('criado_em', { ascending: false }),
+      supabase
+        .from('dependentes')
+        .select('id, nome_completo, parentesco')
+        .in('id', dependenteIds)
     ])
 
     if (clientesRes.error) {
@@ -41,16 +46,24 @@ class TraducoesRepository {
       console.error('Erro ao buscar orçamentos dos documentos:', orcamentosRes.error)
     }
 
+    if (dependentesRes.error) {
+      console.error('Erro ao buscar dependentes dos documentos:', dependentesRes.error)
+    }
+
     const clientes = clientesRes.data || []
     const orcamentos = orcamentosRes.data || []
+    const dependentes = dependentesRes.data || []
 
     // 4. Mesclar os dados
     return documentos.map(doc => {
       const orcamento = orcamentos.find(o => o.documento_id === doc.id)
+      const dependente = doc.dependente_id ? dependentes.find(dep => dep.id === doc.dependente_id) : null
+      
       return {
         ...doc,
         clientes: clientes.find(c => c.id === doc.cliente_id) || null,
-        orcamento: orcamento || null
+        orcamento: orcamento || null,
+        dependente: dependente || null
       }
     })
   }

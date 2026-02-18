@@ -583,7 +583,8 @@ class ClienteRepository {
                     status,
                     etapa_atual,
                     responsavel_id
-                )
+                ),
+                requerimentos (*)
             `)
             .order('created_at', { ascending: false })
 

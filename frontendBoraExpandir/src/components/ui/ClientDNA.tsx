@@ -44,6 +44,7 @@ export type ClientDNAData = {
         responsavel?: string
         tipo?: 'info' | 'success' | 'warning' | 'error'
     }[]
+    hasRequirement?: boolean
 }
 
 export type DNACategory = {
@@ -116,7 +117,8 @@ export function ClientDNAPage() {
                             previsaoChegada: item.previsao_chegada || '',
                             priority: 'medium',
                             notes: [],
-                            historico: []
+                            historico: [],
+                            hasRequirement: item.requerimentos && item.requerimentos.length > 0
                         }
                     })
                 setClientes(mappedClientes)

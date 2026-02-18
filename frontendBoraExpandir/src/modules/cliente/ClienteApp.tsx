@@ -24,6 +24,7 @@ import { DocumentUploadFlow } from './components/DocumentUploadFlow'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
 import { Config } from '../../components/ui/Config'
 import { RequiredActionModal } from './components/RequiredActionModal'
+import { Requerimentos } from './components/Requerimentos'
 
 export function ClienteApp() {
   const location = useLocation()
@@ -32,6 +33,7 @@ export function ClienteApp() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [familyMembers, setFamilyMembers] = useState<{id: string, name: string, email?: string, type: string}[]>([])
   const [processo, setProcesso] = useState<Process | null>(null)
+  const [requerimentos, setRequerimentos] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -94,6 +96,17 @@ export function ClienteApp() {
 
     } catch (error) {
       console.error('Erro ao buscar documentos:', error)
+    }
+  }
+
+  const fetchRequerimentos = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/requerimentos`)
+      if (!response.ok) throw new Error('Falha ao buscar requerimentos')
+      const result = await response.json()
+      setRequerimentos(result.data || [])
+    } catch (error) {
+      console.error('Erro ao buscar requerimentos:', error)
     }
   }
 
@@ -168,6 +181,9 @@ export function ClienteApp() {
 
         // Fetch documents
         await fetchDocuments()
+
+        // Fetch requerimentos
+        await fetchRequerimentos()
       } catch (error) {
         console.error('Erro ao buscar dados iniciais:', error)
         setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }])
@@ -397,6 +413,7 @@ export function ClienteApp() {
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
           { label: 'Agendamento', to: '/cliente/agendamento', icon: Calendar },
           { label: 'Documentos', to: '/cliente/upload', icon: FileText },
+          { label: 'Requerimentos', to: '/cliente/requerimentos', icon: Stamp },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
 
           {
@@ -496,6 +513,7 @@ export function ClienteApp() {
                 client={client}
                 documents={documents}
                 process={processo}
+                requerimentos={requerimentos}
               />
             }
           />
@@ -540,6 +558,10 @@ export function ClienteApp() {
                 onSendForApostille={handleSendForApostille}
               />
             }
+          />
+          <Route
+            path="requerimentos"
+            element={<Requerimentos clienteId={client.id} />}
           />
           <Route
             path="traducao"

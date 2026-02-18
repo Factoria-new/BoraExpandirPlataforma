@@ -10,6 +10,7 @@ import {
     ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Badge } from './Badge'
 import { ClientDNAData, CATEGORIAS_LIST, formatDate } from './ClientDNA'
 
 export function DNAClientListView({
@@ -26,7 +27,8 @@ export function DNAClientListView({
         tipoServico: '',
         status: 'todos' as 'todos' | 'ativo' | 'inativo',
         prioridade: 'todos' as 'todos' | 'high' | 'medium' | 'low',
-        prazos: 'todos' as 'todos' | 'critico' | 'normal'
+        prazos: 'todos' as 'todos' | 'critico' | 'normal',
+        requerimento: 'todos' as 'todos' | 'sim' | 'nao'
     })
 
     const serviceTypes = useMemo(() => Array.from(new Set(clientes.map(c => c.tipoAssessoria))), [clientes])
@@ -48,13 +50,14 @@ export function DNAClientListView({
             const matchesServico = filters.tipoServico === '' || c.tipoAssessoria === filters.tipoServico
             const matchesStatus = filters.status === 'todos' || (filters.status === 'ativo' ? c.contratoAtivo : !c.contratoAtivo)
             const matchesPriority = filters.prioridade === 'todos' || c.priority === filters.prioridade
+            const matchesRequerimento = filters.requerimento === 'todos' || (filters.requerimento === 'sim' ? c.hasRequirement : !c.hasRequirement)
             
             let matchesPrazo = true
             if (filters.prazos === 'critico') {
                 matchesPrazo = !!(c.deadline && new Date(c.deadline) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
             }
 
-            return matchesSearch && matchesId && matchesNome && matchesServico && matchesStatus && matchesPriority && matchesPrazo
+            return matchesSearch && matchesId && matchesNome && matchesServico && matchesStatus && matchesPriority && matchesPrazo && matchesRequerimento
         })
 
         // Ordenação automática por previsão de chegada (mais próximas primeiro)
@@ -159,6 +162,18 @@ export function DNAClientListView({
                                 <option value="low">Baixa</option>
                             </select>
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Requerimento</label>
+                            <select
+                                value={filters.requerimento}
+                                onChange={e => setFilters(f => ({ ...f, requerimento: e.target.value as any }))}
+                                className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                            >
+                                <option value="todos">Todos</option>
+                                <option value="sim">Com Requerimento</option>
+                                <option value="nao">Sem Requerimento</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Barra de Pesquisa Integrada abaixo dos seletores */}
@@ -175,7 +190,7 @@ export function DNAClientListView({
                             <button 
                                 onClick={() => {
                                     setSearchTerm('')
-                                    setFilters({ id: '', nome: '', tipoServico: '', status: 'todos', prioridade: 'todos', prazos: 'todos' })
+                                    setFilters({ id: '', nome: '', tipoServico: '', status: 'todos', prioridade: 'todos', prazos: 'todos', requerimento: 'todos' })
                                 }}
                                 className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-primary hover:underline"
                             >
@@ -256,6 +271,11 @@ export function DNAClientListView({
                                                     {cliente.nome}
                                                     {cliente.priority === 'high' && (
                                                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                                    )}
+                                                    {cliente.hasRequirement && (
+                                                        <Badge variant="destructive" className="animate-pulse text-[7px] px-1 py-0 h-3 leading-none min-w-[50px] flex items-center justify-center">
+                                                            REQ
+                                                        </Badge>
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground truncate">{cliente.email}</div>

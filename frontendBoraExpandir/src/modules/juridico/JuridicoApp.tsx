@@ -77,7 +77,8 @@ const mockJuridicoData: ProcessData[] = [
             tipo: 'Processo Jurídico',
             dataProtocolo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
             valorAcao: '---',
-            observacao: p.observacoes || ''
+            observacao: p.observacoes || '',
+            hasRequirement: p.requerimentos && p.requerimentos.length > 0
           }));
           
           setProcesses(mapped);

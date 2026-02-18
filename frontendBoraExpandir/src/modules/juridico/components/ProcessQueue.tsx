@@ -25,6 +25,7 @@ export interface Process {
     documentsAnalyzing: number;
     documentsApostilled: number;
     documentsTranslated: number;
+    hasRequirement: boolean;
 }
 
 const StatusBadge = ({ status }: { status: Process["status"] }) => {
@@ -109,7 +110,8 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             documentsPending: waitingAction, // Mapping "Pending" visual to "Waiting Action"
             documentsAnalyzing: analyzing,
             documentsApostilled: apostilled,
-            documentsTranslated: translated
+            documentsTranslated: translated,
+            hasRequirement: p.requerimentos ? p.requerimentos.length > 0 : false
         };
     };
 
@@ -528,7 +530,14 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                                     </div>
                                     <div className="min-w-0">
                                         <div className="text-sm font-semibold text-foreground">{process.clientName}</div>
-                                        <div className="text-[10px] text-muted-foreground font-mono">ID: {process.clientId}</div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-[10px] text-muted-foreground font-mono">ID: {process.clientId}</div>
+                                            {process.hasRequirement && (
+                                                <Badge variant="destructive" className="animate-pulse text-[7px] px-1 py-0 h-3 leading-none min-w-[50px] flex items-center justify-center">
+                                                    REQUERIMENTO
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="col-span-2 text-center text-xs font-medium">
